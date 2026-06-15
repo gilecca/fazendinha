@@ -67,7 +67,7 @@ CHANNEL_LAYERS = {
 # Em desenvolvimento, usa SQLite.
 _db_url = config('DATABASE_URL', default='')
 if _db_url:
-    DATABASES = {'default': dj_database_url.config(default=_db_url, conn_max_age=600)}
+    DATABASES = {'default': dj_database_url.parse(_db_url, conn_max_age=600)}
 else:
     DATABASES = {
         'default': {
