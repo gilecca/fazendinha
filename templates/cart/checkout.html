@@ -1,0 +1,115 @@
+﻿{% extends 'base.html' %}
+{% block title %}💳 Finalizar Pedido — Fazendinha{% endblock %}
+{% block content %}
+<div class="container py-5" style="max-width:860px">
+  <div class="d-flex align-items-center gap-3 mb-4">
+    <a href="{% url 'cart' %}" class="btn btn-outline-secondary rounded-pill fw-700">← Carrinho</a>
+    <h1 class="fw-900 mb-0">💳 Finalizar Pedido</h1>
+  </div>
+
+  <div class="row g-4">
+    <!-- Formulário -->
+    <div class="col-md-7">
+      <div class="farm-card p-4 mb-4">
+        <h5 class="fw-900 mb-3">📦 Dados de entrega</h5>
+        <form method="post" id="checkout-form">
+          {% csrf_token %}
+          <div class="mb-3">
+            <label class="form-label fw-700">📍 Endereço completo</label>
+            <textarea name="address" class="form-control farm-input" rows="3"
+              placeholder="Rua, número, bairro, cidade, CEP...">{{ user.city }}</textarea>
+          </div>
+          <div class="mb-4">
+            <label class="form-label fw-700">📝 Observações (opcional)</label>
+            <textarea name="notes" class="form-control farm-input" rows="2"
+              placeholder="Ex: Deixar na portaria, ligar antes de entregar..."></textarea>
+          </div>
+
+          <!-- Métodos de pagamento -->
+          <div class="p-3 mb-4" style="background:var(--soft-yellow); border:2px solid var(--border-green); border-radius:var(--radius-md)">
+            <p class="fw-800 mb-2">💳 Métodos de pagamento aceitos</p>
+            <div class="d-flex flex-wrap gap-2">
+              <span class="fw-700 px-3 py-1 rounded-pill" style="background:#009EE3; color:white; font-size:0.82rem">Mercado Pago</span>
+              <span class="fw-700 px-3 py-1 rounded-pill" style="background:#32BCAD; color:white; font-size:0.82rem">💚 PIX</span>
+              <span class="fw-700 px-3 py-1 rounded-pill" style="background:#4CAF50; color:white; font-size:0.82rem">💳 Cartão</span>
+              <span class="fw-700 px-3 py-1 rounded-pill" style="background:#795548; color:white; font-size:0.82rem">📄 Boleto</span>
+            </div>
+            <p class="fw-600 mt-2 mb-0" style="font-size:0.8rem; color:var(--text-muted)">
+              🔒 Pagamento seguro processado pelo Mercado Pago. Você será redirecionado para concluir.
+            </p>
+          </div>
+
+          <button type="submit" class="btn btn-farm w-100 py-3" style="font-size:1.1rem" id="pay-btn">
+            🔒 Ir para pagamento
+          </button>
+        </form>
+      </div>
+
+      <!-- Segurança -->
+      <div class="d-flex align-items-center gap-3 p-3" style="background:var(--pastel-green); border-radius:var(--radius-md); border:2px solid var(--dark-green)">
+        <span style="font-size:2rem">🔒</span>
+        <div>
+          <p class="fw-800 mb-0" style="font-size:0.88rem">Compra 100% segura</p>
+          <p class="fw-600 mb-0" style="font-size:0.78rem; color:var(--text-muted)">Seus dados são criptografados. Certificado SSL ativo.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Resumo -->
+    <div class="col-md-5">
+      <div class="order-summary">
+        <h5 class="fw-900 mb-3">🛒 Resumo do pedido</h5>
+        {% for item in cart.items.all %}
+          <div class="d-flex align-items-center gap-2 mb-3">
+            <div style="font-size:1.8rem; min-width:38px; text-align:center; flex-shrink:0">
+              {% if item.product.photo %}
+                <img src="{{ item.product.photo.url }}" style="width:38px;height:38px;border-radius:10px;object-fit:cover" alt="">
+              {% else %}
+                {{ item.product.get_icon }}
+              {% endif %}
+            </div>
+            <div class="flex-grow-1">
+              <div class="fw-700" style="font-size:0.88rem; line-height:1.2">{{ item.product.name }}</div>
+              <div class="fw-600" style="font-size:0.75rem; color:var(--text-muted)">
+                {{ item.product.producer.farm_name }} · × {{ item.quantity }}
+              </div>
+            </div>
+            <div class="fw-800 text-end" style="color:var(--deeper-green); white-space:nowrap">
+              R$ {{ item.subtotal }}
+            </div>
+          </div>
+        {% endfor %}
+
+        <div class="fence-divider my-3"><span>🌾</span></div>
+
+        <div class="d-flex justify-content-between mb-2">
+          <span class="fw-700">Subtotal</span>
+          <span class="fw-700">R$ {{ cart.total }}</span>
+        </div>
+        <div class="d-flex justify-content-between mb-3">
+          <span class="fw-700">Frete</span>
+          <span class="fw-700 text-success">A combinar</span>
+        </div>
+        <div class="d-flex justify-content-between align-items-center">
+          <span class="fw-900 fs-5">Total</span>
+          <span class="fw-900 fs-3" style="color:var(--deeper-green)">R$ {{ cart.total }}</span>
+        </div>
+
+        <p class="fw-600 mt-3 mb-0 text-center" style="font-size:0.78rem; color:var(--text-muted)">
+          Ao pagar você será redirecionado para o Mercado Pago 🔒
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% block extra_js %}
+<script>
+document.getElementById('checkout-form').addEventListener('submit', function() {
+  const btn = document.getElementById('pay-btn');
+  btn.disabled = true;
+  btn.innerHTML = '⏳ Redirecionando para pagamento...';
+});
+</script>
+{% endblock %}
+{% endblock %}

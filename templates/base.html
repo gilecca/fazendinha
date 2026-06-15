@@ -1,0 +1,156 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}🌾 Fazendinha{% endblock %}</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌾</text></svg>">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+  <link href="{% static 'css/fazendinha.css' %}" rel="stylesheet">
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar navbar-expand-lg navbar-farm sticky-top">
+  <div class="container">
+    <a class="navbar-brand d-flex align-items-center gap-2" href="{% url 'home' %}">
+      <span style="font-size:1.8rem; animation: float-slow 4s ease-in-out infinite; display:inline-block">🌾</span>
+      <span>Fazendinha</span>
+    </a>
+    <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu">
+      <span style="font-size:1.5rem">☰</span>
+    </button>
+    <div class="collapse navbar-collapse" id="navMenu">
+      <!-- Busca -->
+      <form class="d-flex mx-lg-3 my-2 my-lg-0" action="{% url 'search' %}" method="get">
+        <div class="input-group" style="max-width:260px">
+          <input type="text" name="q" value="{{ request.GET.q }}"
+                 placeholder="🔍 Buscar produtos..."
+                 class="form-control fw-600"
+                 style="border:2px solid rgba(255,255,255,0.65); background:rgba(255,255,255,0.92); border-radius:20px 0 0 20px; font-size:0.88rem">
+          <button class="btn fw-700" type="submit"
+                  style="background:rgba(255,255,255,0.92); border:2px solid rgba(255,255,255,0.65); border-left:none; border-radius:0 20px 20px 0; color:var(--deeper-green)">🔍</button>
+        </div>
+      </form>
+      <ul class="navbar-nav ms-auto align-items-lg-center gap-1">
+        <li class="nav-item"><a class="nav-link" href="{% url 'home' %}">🏡 Início</a></li>
+        <li class="nav-item"><a class="nav-link" href="{% url 'map' %}">🗺️ Mapa</a></li>
+        {% if user.is_authenticated %}
+          {% if user.is_producer %}
+            <li class="nav-item"><a class="nav-link" href="{% url 'producer_dashboard' %}">🌻 Meus Produtos</a></li>
+          {% endif %}
+          <li class="nav-item">
+            <a class="nav-link position-relative" href="{% url 'cart' %}">
+              🛒 Carrinho
+              {% if cart_count > 0 %}
+                <span class="cart-badge position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size:0.65rem">{{ cart_count }}</span>
+              {% endif %}
+            </a>
+          </li>
+          <li class="nav-item"><a class="nav-link" href="{% url 'orders' %}">📦 Pedidos</a></li>
+          <li class="nav-item"><a class="nav-link" href="{% url 'chat' %}">💬 Chat</a></li>
+          <li class="nav-item dropdown ms-lg-2">
+            <a class="nav-link dropdown-toggle d-flex align-items-center gap-2" href="#" data-bs-toggle="dropdown">
+              {% if user.photo %}
+                <img src="{{ user.photo.url }}" class="rounded-circle" width="30" height="30" style="object-fit:cover; border:2px solid rgba(255,255,255,0.6)">
+              {% else %}
+                <span class="rounded-circle bg-white d-flex align-items-center justify-content-center" style="width:30px;height:30px;font-size:1rem">👤</span>
+              {% endif %}
+              <span>{{ user.get_full_name|default:user.username }}</span>
+            </a>
+            <ul class="dropdown-menu farm-dropdown">
+              {% if user.is_producer %}
+                <li><a class="dropdown-item fw-700" href="{% url 'edit_producer_profile' %}">⚙️ Editar Perfil</a></li>
+              {% else %}
+                <li><a class="dropdown-item fw-700" href="{% url 'edit_consumer_profile' %}">👤 Meu Perfil</a></li>
+              {% endif %}
+              <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item fw-700" href="{% url 'logout' %}">🚪 Sair</a></li>
+            </ul>
+          </li>
+        {% else %}
+          <li class="nav-item ms-lg-2"><a class="btn-farm-outline px-4 py-2 rounded-pill fw-700 text-decoration-none" href="{% url 'login' %}">Entrar</a></li>
+          <li class="nav-item ms-lg-1"><a class="btn btn-farm btn-farm-sm" href="{% url 'register' %}">Cadastrar</a></li>
+        {% endif %}
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<!-- BANNER DE VERIFICAÇÃO DE E-MAIL -->
+{% if user.is_authenticated and not user.email_verified %}
+  <div style="background:var(--soft-yellow); border-bottom:2px solid var(--pastel-green); padding:8px 0">
+    <div class="container d-flex align-items-center justify-content-between gap-3 flex-wrap">
+      <span class="fw-700" style="font-size:0.88rem">
+        📧 Confirme seu e-mail para garantir acesso completo à conta.
+      </span>
+      <a href="{% url 'resend_verification' %}" class="btn btn-farm btn-farm-sm fw-800">Reenviar confirmação</a>
+    </div>
+  </div>
+{% endif %}
+
+<!-- MESSAGES -->
+{% if messages %}
+  <div class="container mt-3">
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show farm-alert" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}
+
+<!-- MAIN -->
+<main>{% block content %}{% endblock %}</main>
+
+<!-- FOOTER -->
+<footer class="farm-footer py-5">
+  <div class="container">
+    <div class="row g-4 align-items-center">
+      <div class="col-md-4">
+        <div class="d-flex align-items-center gap-2 mb-2">
+          <span style="font-size:2.2rem">🌾</span>
+          <span class="fw-900 fs-3">Fazendinha</span>
+        </div>
+        <p class="mb-0 fw-600" style="opacity:0.75">Produtos fresquinhos direto do campo para a sua mesa. Conectando produtores locais e consumidores da região. 💚</p>
+      </div>
+      <div class="col-md-4 text-center">
+        <div class="d-flex justify-content-center gap-3 flex-wrap">
+          <span class="farm-animal" style="font-size:2.5rem; animation-delay:0s">🐄</span>
+          <span class="farm-animal" style="font-size:2.5rem; animation-delay:0.4s">🐔</span>
+          <span class="farm-animal" style="font-size:2.5rem; animation-delay:0.8s">🐷</span>
+          <span class="farm-animal" style="font-size:2.5rem; animation-delay:1.2s">🌽</span>
+          <span class="farm-animal" style="font-size:2.5rem; animation-delay:1.6s">🌻</span>
+        </div>
+        <p class="mt-2 mb-0 fw-700" style="font-size:0.8rem; opacity:0.6">🏡 Feito com amor pela roça</p>
+      </div>
+      <div class="col-md-4">
+        <ul class="list-unstyled mb-0">
+          <li class="mb-2"><a href="{% url 'home' %}" class="fw-700 text-decoration-none">🏠 Início</a></li>
+          <li class="mb-2"><a href="{% url 'map' %}" class="fw-700 text-decoration-none">🗺️ Mapa de Produtores</a></li>
+          {% if not user.is_authenticated %}
+            <li class="mb-2"><a href="{% url 'register' %}" class="fw-700 text-decoration-none">✍️ Cadastre-se</a></li>
+            <li><a href="{% url 'login' %}" class="fw-700 text-decoration-none">🔑 Entrar</a></li>
+          {% else %}
+            <li class="mb-2"><a href="{% url 'cart' %}" class="fw-700 text-decoration-none">🛒 Carrinho</a></li>
+            <li><a href="{% url 'orders' %}" class="fw-700 text-decoration-none">📦 Meus Pedidos</a></li>
+          {% endif %}
+        </ul>
+      </div>
+    </div>
+    <hr style="border-color:rgba(0,0,0,0.15); margin:24px 0">
+    <p class="text-center mb-0 fw-700" style="font-size:0.85rem; opacity:0.6">
+      © 2025 Fazendinha · Direto do campo 🌱 · Feito com 💚 para agricultores e consumidores
+    </p>
+  </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="{% static 'js/main.js' %}"></script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,76 @@
+﻿{% extends 'base.html' %}
+{% block title %}✅ Pagamento Aprovado — Fazendinha{% endblock %}
+{% block content %}
+<div class="container py-5" style="max-width:680px">
+  <div class="text-center mb-5">
+    <!-- Animação de sucesso -->
+    <div style="font-size:6rem; animation:float-slow 3s ease-in-out infinite; display:inline-block">✅</div>
+    <h1 class="fw-900 mt-3 mb-2" style="color:var(--deeper-green)">Pagamento aprovado!</h1>
+    <p class="fw-600 fs-5" style="color:var(--text-muted)">
+      Uhuul! Seus produtos fresquinhos estão a caminho. 🌾🐄
+    </p>
+    {% if payment_id %}
+      <span class="fw-700 px-3 py-1 rounded-pill" style="background:var(--pastel-green); font-size:0.82rem">
+        ID do pagamento: {{ payment_id }}
+      </span>
+    {% endif %}
+  </div>
+
+  {% if orders %}
+    <div class="d-flex flex-column gap-3 mb-5">
+      {% for order in orders %}
+        <div class="farm-card p-4">
+          <div class="d-flex justify-content-between align-items-start mb-3">
+            <div>
+              <h5 class="fw-900 mb-1">Pedido #{{ order.pk }}</h5>
+              <p class="fw-600 mb-0" style="font-size:0.85rem; color:var(--text-muted)">
+                🏡 {{ order.producer.farm_name }}
+              </p>
+            </div>
+            <div class="text-end">
+              <div class="fw-900" style="color:var(--deeper-green)">R$ {{ order.total }}</div>
+              <span class="status-badge status-received mt-1">📬 Recebido</span>
+            </div>
+          </div>
+          <div class="d-flex flex-wrap gap-2">
+            {% for item in order.items.all %}
+              <div class="d-flex align-items-center gap-2 px-3 py-2"
+                   style="background:var(--soft-yellow); border-radius:12px; border:2px solid var(--border-green)">
+                <span style="font-size:1.3rem">{{ item.product.get_icon }}</span>
+                <span class="fw-700" style="font-size:0.85rem">{{ item.product.name }} × {{ item.quantity }}</span>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <!-- Próximos passos -->
+  <div class="p-4 mb-4" style="background:var(--soft-yellow); border:2px solid var(--border-green); border-radius:var(--radius-md)">
+    <h5 class="fw-900 mb-3">📋 O que acontece agora?</h5>
+    <div class="d-flex flex-column gap-2">
+      <div class="d-flex gap-3 align-items-start">
+        <span style="font-size:1.3rem">📬</span>
+        <div><span class="fw-800">Pedido recebido</span><br>
+        <span class="fw-600" style="font-size:0.85rem; color:var(--text-muted)">O produtor foi notificado e confirmará seu pedido.</span></div>
+      </div>
+      <div class="d-flex gap-3 align-items-start">
+        <span style="font-size:1.3rem">👨‍🍳</span>
+        <div><span class="fw-800">Preparo</span><br>
+        <span class="fw-600" style="font-size:0.85rem; color:var(--text-muted)">Seus produtos serão separados e embalados com cuidado.</span></div>
+      </div>
+      <div class="d-flex gap-3 align-items-start">
+        <span style="font-size:1.3rem">🚚</span>
+        <div><span class="fw-800">Entrega</span><br>
+        <span class="fw-600" style="font-size:0.85rem; color:var(--text-muted)">Acompanhe o status pelo painel de pedidos.</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="d-flex gap-3 justify-content-center flex-wrap">
+    <a href="{% url 'orders' %}" class="btn btn-farm px-5">📦 Ver meus pedidos</a>
+    <a href="{% url 'home' %}" class="btn btn-farm-orange px-5">🛒 Continuar comprando</a>
+  </div>
+</div>
+{% endblock %}

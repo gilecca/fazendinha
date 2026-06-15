@@ -1,0 +1,123 @@
+﻿{% extends 'base.html' %}
+{% block title %}{{ product.name }} — Fazendinha{% endblock %}
+{% block content %}
+<div class="container py-5">
+  <!-- Breadcrumb -->
+  <nav class="mb-4">
+    <ol class="breadcrumb fw-700">
+      <li class="breadcrumb-item"><a href="{% url 'home' %}" class="text-decoration-none" style="color:var(--deeper-green)">🏡 Início</a></li>
+      {% if product.category %}<li class="breadcrumb-item"><a href="{% url 'category' product.category.slug %}" class="text-decoration-none" style="color:var(--deeper-green)">{{ product.category.name }}</a></li>{% endif %}
+      <li class="breadcrumb-item active">{{ product.name }}</li>
+    </ol>
+  </nav>
+
+  <div class="row g-5">
+    <!-- Foto -->
+    <div class="col-lg-5">
+      {% if product.photo %}
+        <img src="{{ product.photo.url }}" class="product-detail-img" alt="{{ product.name }}">
+      {% else %}
+        <div class="product-detail-placeholder">{{ product.get_icon }}</div>
+      {% endif %}
+    </div>
+
+    <!-- Info -->
+    <div class="col-lg-7">
+      {% if product.category %}
+        <a href="{% url 'category' product.category.slug %}" class="category-pill text-decoration-none mb-3 d-inline-flex" style="font-size:0.85rem">
+          <span>{{ product.category.get_icon }}</span> {{ product.category.name }}
+        </a>
+      {% endif %}
+
+      <h1 class="fw-900 mb-2">{{ product.name }}</h1>
+
+      <a href="{% url 'producer_profile' product.producer.pk %}" class="d-inline-flex align-items-center gap-2 text-decoration-none mb-3">
+        {% if product.producer.user.photo %}
+          <img src="{{ product.producer.user.photo.url }}" class="rounded-circle" width="32" height="32" style="object-fit:cover; border:2px solid var(--medium-green)">
+        {% else %}
+          <span style="font-size:1.5rem">🧑‍🌾</span>
+        {% endif %}
+        <span class="fw-700" style="color:var(--deeper-green)">{{ product.producer.farm_name }}</span>
+        <span class="fw-600" style="color:var(--text-muted); font-size:0.85rem">📍 {{ product.producer.city }}</span>
+      </a>
+
+      <!-- Preço -->
+      <div class="p-4 mb-4" style="background:var(--soft-yellow); border:2px solid var(--border-green); border-radius:var(--radius-md)">
+        {% if product.is_promotion and product.promotion_price %}
+          <div class="d-flex align-items-center gap-3 flex-wrap mb-1">
+            <span class="badge-promo">🔥 Promoção</span>
+            <span class="fw-700 text-decoration-line-through" style="color:var(--text-muted); font-size:1rem">R$ {{ product.price }}</span>
+          </div>
+          <div class="fw-900" style="font-size:2.5rem; color:#e53935; line-height:1">R$ {{ product.promotion_price }}</div>
+          <p class="fw-700 mb-0" style="color:#c62828; font-size:0.85rem">
+            Economia de R$ {% widthratio product.price 1 1 %} 🎉
+          </p>
+        {% else %}
+          <div class="fw-900" style="font-size:2.5rem; color:var(--deeper-green); line-height:1">R$ {{ product.price }}</div>
+        {% endif %}
+        {% if product.weight %}
+          <p class="fw-700 mb-0 mt-1" style="color:var(--text-muted)">⚖️ {{ product.weight }}</p>
+        {% endif %}
+      </div>
+
+      <!-- Disponibilidade -->
+      <div class="d-flex align-items-center gap-3 mb-4 flex-wrap">
+        {% if product.is_available and product.stock > 0 %}
+          <span class="status-badge status-delivery">✅ Disponível</span>
+          <span class="fw-700" style="color:var(--text-muted); font-size:0.88rem">{{ product.stock }} unidades em estoque</span>
+        {% else %}
+          <span class="status-badge status-received">❌ Indisponível</span>
+        {% endif %}
+      </div>
+
+      <!-- Descrição -->
+      {% if product.description %}
+        <p class="fw-600 mb-4" style="color:var(--warm-brown); line-height:1.7">{{ product.description }}</p>
+      {% endif %}
+
+      <!-- Botões -->
+      {% if product.is_available and product.stock > 0 %}
+        {% if user.is_authenticated %}
+          <div class="d-flex gap-3 flex-wrap">
+            <form action="{% url 'add_to_cart' product.pk %}" method="post">
+              {% csrf_token %}
+              <button class="btn btn-farm px-5 py-2">🛒 Adicionar ao carrinho</button>
+            </form>
+            <a href="{% url 'chat_with' product.producer.user.pk %}" class="btn btn-farm-orange px-4 py-2">💬 Perguntar ao produtor</a>
+          </div>
+        {% else %}
+          <a href="{% url 'login' %}" class="btn btn-farm px-5 py-2">🔑 Entrar para comprar</a>
+        {% endif %}
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Produtos relacionados -->
+  {% if related %}
+    <div class="mt-6 pt-5">
+      <div class="fence-divider"><span>🌽</span></div>
+      <h3 class="section-title mt-4">🛒 Você também pode gostar</h3>
+      <div class="row g-4">
+        {% for p in related %}
+          <div class="col-6 col-md-3">
+            <div class="product-card">
+              <a href="{% url 'product_detail' p.pk %}" class="text-decoration-none">
+                <div class="img-wrapper" style="height:140px">
+                  {% if p.photo %}<img src="{{ p.photo.url }}" alt="{{ p.name }}">
+                  {% else %}<span>{{ p.get_icon }}</span>{% endif %}
+                </div>
+              </a>
+              <div class="card-body p-3">
+                <a href="{% url 'product_detail' p.pk %}" class="text-decoration-none">
+                  <p class="product-name" style="font-size:0.88rem">{{ p.name }}</p>
+                </a>
+                <div class="product-price" style="font-size:1rem">R$ {{ p.current_price }}</div>
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

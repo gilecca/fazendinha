@@ -1,0 +1,293 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}🌾 Fazendinha — Produtos fresquinhos do campo{% endblock %}
+
+{% block content %}
+
+<!-- HERO -->
+<section class="hero-section">
+  <div class="container">
+    <div class="row align-items-center g-4">
+      <div class="col-lg-6">
+        <p class="fw-800 mb-2" style="color:var(--deeper-green); font-size:1rem; letter-spacing:1px">🌱 DIRETO DO CAMPO PARA VOCÊ</p>
+        <h1 class="hero-title mb-3">
+          Produtos <span>fresquinhos</span><br>de produtores locais
+        </h1>
+        <p class="hero-sub mb-4">Queijos, frutas, café, hortaliças e muito mais — tudo artesanal, sem agrotóxicos e entregue na sua porta. 🐄🌽</p>
+        <div class="d-flex gap-3 flex-wrap">
+          {% if not user.is_authenticated %}
+            <a href="{% url 'register' %}" class="btn btn-farm px-4 py-2">🛒 Começar a comprar</a>
+            <a href="{% url 'register' %}?type=producer" class="btn btn-farm-orange px-4 py-2">🌾 Sou produtor</a>
+          {% else %}
+            <a href="#todos-produtos" class="btn btn-farm px-4 py-2">🛒 Ver produtos</a>
+            <a href="{% url 'map' %}" class="btn btn-farm-orange px-4 py-2">🗺️ Encontrar produtores</a>
+          {% endif %}
+        </div>
+        <div class="d-flex gap-4 mt-4 flex-wrap">
+          <div class="text-center">
+            <div class="fw-900 fs-4" style="color:var(--deeper-green)">{{ producers|length }}+</div>
+            <div class="fw-600" style="font-size:0.8rem; color:var(--text-muted)">Produtores</div>
+          </div>
+          <div class="text-center">
+            <div class="fw-900 fs-4" style="color:var(--deeper-green)">{{ categories|length }}</div>
+            <div class="fw-600" style="font-size:0.8rem; color:var(--text-muted)">Categorias</div>
+          </div>
+          <div class="text-center">
+            <div class="fw-900 fs-4" style="color:var(--deeper-green)">100%</div>
+            <div class="fw-600" style="font-size:0.8rem; color:var(--text-muted)">Artesanal</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-6 text-center d-none d-lg-block">
+        <div style="font-size:5rem; display:flex; flex-wrap:wrap; justify-content:center; gap:8px; max-width:320px; margin:0 auto">
+          <span style="animation:float-slow 3s ease-in-out infinite; display:inline-block; animation-delay:0s">🧀</span>
+          <span style="animation:float-slow 3s ease-in-out infinite; display:inline-block; animation-delay:0.3s">🐄</span>
+          <span style="animation:float-slow 3s ease-in-out infinite; display:inline-block; animation-delay:0.6s">🌽</span>
+          <span style="animation:float-slow 3s ease-in-out infinite; display:inline-block; animation-delay:0.9s">🐔</span>
+          <span style="animation:float-slow 3s ease-in-out infinite; display:inline-block; animation-delay:1.2s">🍎</span>
+          <span style="animation:float-slow 3s ease-in-out infinite; display:inline-block; animation-delay:1.5s">🐷</span>
+          <span style="animation:float-slow 3s ease-in-out infinite; display:inline-block; animation-delay:1.8s">☕</span>
+          <span style="animation:float-slow 3s ease-in-out infinite; display:inline-block; animation-delay:2.1s">🌻</span>
+          <span style="animation:float-slow 3s ease-in-out infinite; display:inline-block; animation-delay:2.4s">🥦</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CATEGORIAS — barra horizontal rolável -->
+<section class="py-4" style="background:#fff; border-bottom:2px solid var(--border-green)">
+  <div class="container">
+    <div class="d-flex gap-3 overflow-auto pb-1" style="scrollbar-width:none; -ms-overflow-style:none">
+      <a href="{% url 'home' %}"
+         class="category-pill text-decoration-none flex-shrink-0"
+         style="background:var(--medium-green); color:#fff">
+        <span class="cat-icon">🌾</span><span>Tudo</span>
+      </a>
+      {% for cat in categories %}
+        <a href="{% url 'category' cat.slug %}"
+           class="category-pill text-decoration-none flex-shrink-0">
+          <span class="cat-icon">{{ cat.get_icon }}</span>
+          <span>{{ cat.name }}</span>
+        </a>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<!-- PROMOÇÕES -->
+{% if promotions %}
+<section class="py-4">
+  <div class="container">
+    <div class="promo-banner mb-4">
+      <h2 class="section-title mb-1" style="font-size:1.5rem">🔥 Promoções de hoje</h2>
+      <p class="mb-0 fw-600" style="color:var(--warm-brown)">Aproveite antes que acabe! Produtos selecionados com desconto especial.</p>
+    </div>
+    <div class="row g-3">
+      {% for product in promotions %}
+        <div class="col-6 col-md-4 col-lg-3">
+          <div class="product-card h-100">
+            <a href="{% url 'product_detail' product.pk %}" class="text-decoration-none">
+              <div class="img-wrapper">
+                {% if product.photo %}
+                  <img src="{{ product.photo.url }}" alt="{{ product.name }}">
+                {% else %}
+                  <span>{{ product.get_icon }}</span>
+                {% endif %}
+                <span class="badge-promo position-absolute top-0 end-0 m-2">🔥 Oferta</span>
+              </div>
+            </a>
+            <div class="card-body">
+              <p class="product-producer mb-1">
+                <a href="{% url 'producer_profile' product.producer.pk %}" class="text-decoration-none text-muted">
+                  🏡 {{ product.producer.farm_name }}
+                </a>
+              </p>
+              <a href="{% url 'product_detail' product.pk %}" class="text-decoration-none">
+                <p class="product-name">{{ product.name }}</p>
+              </a>
+              <div class="mt-auto pt-2">
+                <div class="product-old-price">R$ {{ product.price }}</div>
+                <div class="product-price" style="color:#e53935">R$ {{ product.promotion_price }}</div>
+                {% if user.is_authenticated %}
+                  <form action="{% url 'add_to_cart' product.pk %}" method="post" class="mt-2">
+                    {% csrf_token %}
+                    <button class="btn btn-farm btn-farm-sm w-100">🛒 Adicionar</button>
+                  </form>
+                {% else %}
+                  <a href="{% url 'login' %}" class="btn btn-farm btn-farm-sm w-100 mt-2">🛒 Comprar</a>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+<div class="container"><div class="fence-divider"><span>🌾</span></div></div>
+{% endif %}
+
+<!-- PRODUTORES — cards grandes estilo iFood -->
+<section class="py-4" style="background:linear-gradient(135deg,var(--pastel-green) 0%,#fff 100%)">
+  <div class="container">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+      <h2 class="section-title mb-0">🏡 Produtores da Região</h2>
+      <a href="{% url 'map' %}" class="btn btn-farm btn-farm-sm">🗺️ Ver no mapa</a>
+    </div>
+    {% if producers %}
+      <div class="d-flex gap-3 overflow-auto pb-2" style="scrollbar-width:thin">
+        {% for producer in producers %}
+          <a href="{% url 'producer_profile' producer.pk %}" class="text-decoration-none flex-shrink-0"
+             style="width:180px">
+            <div class="farm-card p-3 h-100 text-center" style="border-radius:18px; transition:transform .2s"
+                 onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform=''">
+              {% if producer.cover_photo %}
+                <img src="{{ producer.cover_photo.url }}"
+                     style="width:70px;height:70px;border-radius:50%;object-fit:cover;border:3px solid var(--medium-green);margin-bottom:10px"
+                     alt="{{ producer.farm_name }}">
+              {% else %}
+                <div style="width:70px;height:70px;border-radius:50%;background:linear-gradient(135deg,var(--pastel-green),var(--medium-green));display:flex;align-items:center;justify-content:center;font-size:2rem;margin:0 auto 10px">🌾</div>
+              {% endif %}
+              <div class="fw-800" style="font-size:0.88rem; color:var(--deeper-green)">{{ producer.farm_name }}</div>
+              <div style="font-size:0.75rem; color:var(--text-muted)" class="mt-1">
+                📍 {{ producer.city }}{% if producer.state %}, {{ producer.state }}{% endif %}
+              </div>
+              {% with avg=producer.get_average_rating %}
+                {% if avg > 0 %}
+                  <div style="font-size:0.82rem; margin-top:4px">
+                    {% for i in "12345" %}{% if forloop.counter <= avg %}⭐{% else %}☆{% endif %}{% endfor %}
+                  </div>
+                {% endif %}
+              {% endwith %}
+              {% if producer.is_premium %}
+                <span class="badge-destaque mt-2 d-inline-block" style="font-size:0.72rem">👑 Premium</span>
+              {% endif %}
+            </div>
+          </a>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="empty-state">
+        <div class="empty-icon">🏡</div>
+        <h4>Nenhum produtor cadastrado ainda</h4>
+        <a href="{% url 'register' %}" class="btn btn-farm mt-3">🌾 Seja o primeiro!</a>
+      </div>
+    {% endif %}
+  </div>
+</section>
+
+<div class="container"><div class="fence-divider"><span>🐄</span></div></div>
+
+<!-- TODOS OS PRODUTOS -->
+<section class="py-4 pb-5" id="todos-produtos">
+  <div class="container">
+    <div class="d-flex align-items-center justify-content-between mb-4">
+      <h2 class="section-title mb-0">🛒 Produtos disponíveis</h2>
+      {% if user.is_authenticated and user.is_producer %}
+        <a href="{% url 'add_product' %}" class="btn btn-farm btn-farm-sm">➕ Adicionar produto</a>
+      {% endif %}
+    </div>
+
+    {% if all_products %}
+      <div class="row g-4">
+        {% for product in all_products %}
+          <div class="col-6 col-md-4 col-lg-3">
+            <div class="product-card h-100">
+              <a href="{% url 'product_detail' product.pk %}" class="text-decoration-none">
+                <div class="img-wrapper">
+                  {% if product.photo %}
+                    <img src="{{ product.photo.url }}" alt="{{ product.name }}">
+                  {% else %}
+                    <span>{{ product.get_icon }}</span>
+                  {% endif %}
+                  {% if product.is_promotion %}
+                    <span class="badge-promo position-absolute top-0 end-0 m-2">🔥 Oferta</span>
+                  {% elif product.is_featured %}
+                    <span class="badge-destaque position-absolute top-0 end-0 m-2">⭐ Destaque</span>
+                  {% endif %}
+                </div>
+              </a>
+              <div class="card-body">
+                <p class="product-producer mb-1">
+                  <a href="{% url 'producer_profile' product.producer.pk %}" class="text-decoration-none text-muted">
+                    🏡 {{ product.producer.farm_name }}
+                  </a>
+                </p>
+                <a href="{% url 'product_detail' product.pk %}" class="text-decoration-none">
+                  <p class="product-name">{{ product.name }}</p>
+                </a>
+                {% if product.weight %}
+                  <p class="mb-1" style="font-size:0.8rem; color:var(--text-muted)">⚖️ {{ product.weight }}</p>
+                {% endif %}
+                <div class="mt-auto pt-2">
+                  {% if product.is_promotion and product.promotion_price %}
+                    <div class="product-old-price">R$ {{ product.price }}</div>
+                    <div class="product-price" style="color:#e53935">R$ {{ product.promotion_price }}</div>
+                  {% else %}
+                    <div class="product-price">R$ {{ product.price }}</div>
+                  {% endif %}
+                  {% if user.is_authenticated %}
+                    <form action="{% url 'add_to_cart' product.pk %}" method="post" class="mt-2">
+                      {% csrf_token %}
+                      <button class="btn btn-farm btn-farm-sm w-100">🛒 Adicionar</button>
+                    </form>
+                  {% else %}
+                    <a href="{% url 'login' %}" class="btn btn-farm btn-farm-sm w-100 mt-2">🛒 Comprar</a>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+      <div class="text-center mt-4">
+        <a href="{% url 'search' %}?q=" class="btn btn-farm-outline px-5 fw-800 rounded-pill">
+          Ver todos os produtos →
+        </a>
+      </div>
+    {% else %}
+      <div class="empty-state">
+        <div class="empty-icon">🌱</div>
+        <h4>Nenhum produto disponível ainda</h4>
+        <p class="fw-600" style="color:var(--text-muted)">Em breve novidades fresquinhas chegando!</p>
+        {% if not user.is_authenticated %}
+          <a href="{% url 'register' %}?type=producer" class="btn btn-farm mt-3">🌾 Cadastre sua fazenda</a>
+        {% endif %}
+      </div>
+    {% endif %}
+  </div>
+</section>
+
+<!-- POR QUE USAR A FAZENDINHA? -->
+<section class="py-5" style="background: linear-gradient(135deg, var(--pastel-green), var(--soft-yellow))">
+  <div class="container text-center">
+    <h2 class="section-title center-line mx-auto d-inline-block">Por que usar a Fazendinha?</h2>
+    <div class="row g-4 mt-3">
+      <div class="col-md-4">
+        <div class="farm-card p-4 h-100">
+          <div style="font-size:3rem" class="mb-3">🌱</div>
+          <h5 class="fw-800">Produtos Frescos</h5>
+          <p class="fw-600" style="color:var(--text-muted)">Direto do produtor para você, sem intermediários. Qualidade garantida.</p>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="farm-card p-4 h-100">
+          <div style="font-size:3rem" class="mb-3">🤝</div>
+          <h5 class="fw-800">Apoie o Local</h5>
+          <p class="fw-600" style="color:var(--text-muted)">Cada compra fortalece agricultores e produtores da sua região.</p>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="farm-card p-4 h-100">
+          <div style="font-size:3rem" class="mb-3">💬</div>
+          <h5 class="fw-800">Chat Direto</h5>
+          <p class="fw-600" style="color:var(--text-muted)">Fale direto com o produtor, tire dúvidas e combine entregas.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+{% endblock %}

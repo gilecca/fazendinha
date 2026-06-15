@@ -1,0 +1,174 @@
+﻿{% extends 'base.html' %}
+{% block title %}🔍 "{{ query }}" — Fazendinha{% endblock %}
+{% block content %}
+<div class="container py-5">
+  <div class="d-flex align-items-center gap-3 mb-2 flex-wrap">
+    <h1 class="fw-900 mb-0">🔍 Resultados para "{{ query }}"</h1>
+    {% if query %}
+      <span class="fw-700 px-3 py-1 rounded-pill" style="background:var(--pastel-green); font-size:0.88rem">
+        {{ total }} resultado{{ total|pluralize }}
+      </span>
+    {% endif %}
+  </div>
+
+  <!-- Nova busca inline -->
+  <form action="{% url 'search' %}" method="get" class="mb-5">
+    <div class="input-group" style="max-width:480px">
+      <input type="text" name="q" value="{{ query }}" class="form-control farm-input"
+             placeholder="Buscar produtos, produtores, categorias..." autofocus>
+      <button class="btn btn-farm px-4 fw-800" type="submit">🔍 Buscar</button>
+    </div>
+  </form>
+
+  {% if not query %}
+    <div class="empty-state">
+      <div class="empty-icon">🔍</div>
+      <h4>O que você está procurando?</h4>
+      <p class="fw-600" style="color:var(--text-muted)">
+        Tente "queijo minas", "café orgânico", "hortaliças"...
+      </p>
+    </div>
+
+  {% elif total == 0 %}
+    <div class="empty-state">
+      <div class="empty-icon">😕</div>
+      <h4>Nenhum resultado para "{{ query }}"</h4>
+      <p class="fw-600" style="color:var(--text-muted)">Tente usar palavras diferentes ou explore as categorias abaixo.</p>
+      <div class="d-flex flex-wrap gap-2 justify-content-center mt-3">
+        <a href="{% url 'category' 'queijo' %}" class="category-pill text-decoration-none">🧀 Queijo</a>
+        <a href="{% url 'category' 'cafe' %}" class="category-pill text-decoration-none">☕ Café</a>
+        <a href="{% url 'category' 'hortalicas' %}" class="category-pill text-decoration-none">🥦 Hortaliças</a>
+        <a href="{% url 'category' 'frutas' %}" class="category-pill text-decoration-none">🍎 Frutas</a>
+        <a href="{% url 'category' 'doces' %}" class="category-pill text-decoration-none">🍰 Doces</a>
+        <a href="{% url 'category' 'leite' %}" class="category-pill text-decoration-none">🥛 Leite</a>
+      </div>
+    </div>
+
+  {% else %}
+
+    <!-- Ordenação -->
+    {% if products %}
+      <div class="d-flex align-items-center gap-2 mb-4 flex-wrap">
+        <span class="fw-700" style="font-size:0.9rem">Ordenar:</span>
+        <form method="get" class="d-flex gap-2">
+          <input type="hidden" name="q" value="{{ query }}">
+          <select name="sort" class="form-select form-select-sm farm-input" style="width:auto"
+                  onchange="this.form.submit()">
+            <option value="relevance" {% if sort == 'relevance' or not sort %}selected{% endif %}>Relevância</option>
+            <option value="price_asc" {% if sort == 'price_asc' %}selected{% endif %}>Menor preço</option>
+            <option value="price_desc" {% if sort == 'price_desc' %}selected{% endif %}>Maior preço</option>
+          </select>
+        </form>
+      </div>
+    {% endif %}
+
+    <!-- Produtos -->
+    {% if products %}
+      <h2 class="section-title mb-4">🛒 Produtos ({{ products.paginator.count }})</h2>
+      <div class="row g-4 mb-5">
+        {% for product in products %}
+          <div class="col-6 col-md-4 col-lg-3">
+            <div class="product-card">
+              <a href="{% url 'product_detail' product.pk %}" class="text-decoration-none">
+                <div class="img-wrapper">
+                  {% if product.photo %}<img src="{{ product.photo.url }}" alt="{{ product.name }}">
+                  {% else %}<span>{{ product.get_icon }}</span>{% endif %}
+                  {% if product.is_promotion %}
+                    <span class="badge-promo position-absolute top-0 end-0 m-2">🔥 Promo</span>
+                  {% endif %}
+                </div>
+              </a>
+              <div class="card-body">
+                <p class="product-producer mb-1">
+                  <a href="{% url 'producer_profile' product.producer.pk %}" class="text-decoration-none text-muted">
+                    🏡 {{ product.producer.farm_name }}
+                  </a>
+                </p>
+                <a href="{% url 'product_detail' product.pk %}" class="text-decoration-none">
+                  <p class="product-name">{{ product.name }}</p>
+                </a>
+                {% if product.weight %}
+                  <p class="mb-2" style="font-size:0.8rem; color:var(--text-muted)">⚖️ {{ product.weight }}</p>
+                {% endif %}
+                <div class="mt-auto">
+                  {% if product.is_promotion and product.promotion_price %}
+                    <div class="product-old-price">R$ {{ product.price }}</div>
+                    <div class="product-price" style="color:#e53935">R$ {{ product.promotion_price }}</div>
+                  {% else %}
+                    <div class="product-price">R$ {{ product.price }}</div>
+                  {% endif %}
+                  {% if user.is_authenticated %}
+                    <form action="{% url 'add_to_cart' product.pk %}" method="post" class="mt-2">
+                      {% csrf_token %}
+                      <button class="btn btn-farm btn-farm-sm w-100">🛒 Adicionar</button>
+                    </form>
+                  {% else %}
+                    <a href="{% url 'login' %}" class="btn btn-farm btn-farm-sm w-100 mt-2">🛒 Comprar</a>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    {% if products.has_other_pages %}
+      <nav class="mt-2 mb-5 d-flex justify-content-center">
+        <ul class="pagination gap-1">
+          {% if products.has_previous %}
+            <li class="page-item">
+              <a class="page-link fw-700 rounded-pill" href="?q={{ query }}&page={{ products.previous_page_number }}">← Anterior</a>
+            </li>
+          {% endif %}
+          {% for num in products.paginator.page_range %}
+            {% if products.number == num %}
+              <li class="page-item active">
+                <span class="page-link fw-800 rounded-pill" style="background:var(--deeper-green); border-color:var(--deeper-green)">{{ num }}</span>
+              </li>
+            {% elif num > products.number|add:"-3" and num < products.number|add:"3" %}
+              <li class="page-item">
+                <a class="page-link fw-700 rounded-pill" href="?q={{ query }}&page={{ num }}">{{ num }}</a>
+              </li>
+            {% endif %}
+          {% endfor %}
+          {% if products.has_next %}
+            <li class="page-item">
+              <a class="page-link fw-700 rounded-pill" href="?q={{ query }}&page={{ products.next_page_number }}">Próxima →</a>
+            </li>
+          {% endif %}
+        </ul>
+      </nav>
+    {% endif %}
+
+    <!-- Produtores -->
+    {% if producers %}
+      {% if products %}<div class="fence-divider"><span>🌾</span></div>{% endif %}
+      <h2 class="section-title mb-4 mt-4">🏡 Produtores ({{ producers.count }})</h2>
+      <div class="row g-4">
+        {% for producer in producers %}
+          <div class="col-6 col-md-4 col-lg-3">
+            <a href="{% url 'producer_profile' producer.pk %}" class="text-decoration-none">
+              <div class="producer-card">
+                {% if producer.cover_photo %}
+                  <img src="{{ producer.cover_photo.url }}" class="producer-avatar mb-3" alt="">
+                {% else %}
+                  <div class="producer-avatar-placeholder mb-3">🌾</div>
+                {% endif %}
+                <h6 class="fw-800 mb-1">{{ producer.farm_name }}</h6>
+                <p class="mb-1" style="font-size:0.78rem; color:var(--text-muted)">
+                  📍 {{ producer.city }}{% if producer.state %}, {{ producer.state }}{% endif %}
+                </p>
+                <p class="mb-0" style="font-size:0.78rem; color:var(--text-muted)">
+                  🛒 {{ producer.products.count }} produto{{ producer.products.count|pluralize }}
+                </p>
+              </div>
+            </a>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+  {% endif %}
+</div>
+{% endblock %}

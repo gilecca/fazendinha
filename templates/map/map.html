@@ -1,0 +1,119 @@
+﻿{% extends 'base.html' %}
+{% block title %}🗺️ Mapa de Produtores — Fazendinha{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+  <h1 class="fw-900 mb-2">🗺️ Mapa de Produtores</h1>
+  <p class="fw-600 mb-4" style="color:var(--text-muted)">Encontre produtores e feiras locais próximos a você 📍</p>
+
+  <div class="row g-4">
+    <!-- Mapa -->
+    <div class="col-lg-8">
+      <div class="map-container">
+        <div id="map" style="height:520px"></div>
+      </div>
+      <p class="fw-600 mt-2" style="font-size:0.82rem; color:var(--text-muted)">
+        🗺️ Mapa via OpenStreetMap · Clique nos marcadores para ver detalhes
+      </p>
+    </div>
+
+    <!-- Lista de produtores -->
+    <div class="col-lg-4">
+      <div class="farm-card p-3">
+        <h5 class="fw-900 mb-3">🏡 Produtores ({{ producers|length }})</h5>
+        <div class="map-producer-list d-flex flex-column gap-2">
+          {% for producer in producers %}
+            <a href="{% url 'producer_profile' producer.pk %}" class="text-decoration-none">
+              <div class="d-flex align-items-center gap-3 p-2" style="border-radius:12px; transition:background 0.2s; cursor:pointer" onmouseover="this.style.background='var(--soft-yellow)'" onmouseout="this.style.background='transparent'">
+                {% if producer.cover_photo %}
+                  <img src="{{ producer.cover_photo.url }}" class="rounded-circle" width="46" height="46" style="object-fit:cover; border:2px solid var(--medium-green); flex-shrink:0">
+                {% else %}
+                  <div style="width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,var(--pastel-green),var(--medium-green));display:flex;align-items:center;justify-content:center;font-size:1.4rem;flex-shrink:0">🌾</div>
+                {% endif %}
+                <div class="flex-grow-1 overflow-hidden">
+                  <div class="fw-800" style="font-size:0.88rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">{{ producer.farm_name }}</div>
+                  <div class="fw-600" style="font-size:0.76rem; color:var(--text-muted)">📍 {{ producer.city }}{% if producer.state %}, {{ producer.state }}{% endif %}</div>
+                  <div class="fw-600" style="font-size:0.76rem; color:var(--text-muted)">🛒 {{ producer.products.count }} produto{{ producer.products.count|pluralize }}</div>
+                </div>
+                {% if producer.is_premium %}
+                  <span style="font-size:0.8rem">👑</span>
+                {% endif %}
+              </div>
+            </a>
+          {% empty %}
+            <div class="empty-state py-3">
+              <div class="empty-icon" style="font-size:2.5rem">🏡</div>
+              <p class="fw-700">Nenhum produtor cadastrado ainda.</p>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Dica -->
+      <div class="mt-3 p-3" style="background:var(--soft-yellow); border:2px solid var(--border-green); border-radius:var(--radius-md)">
+        <p class="fw-800 mb-1" style="font-size:0.9rem">💡 Dica</p>
+        <p class="fw-600 mb-0" style="font-size:0.82rem; color:var(--text-muted)">
+          Produtores com localização cadastrada aparecem no mapa. Clique nos marcadores 📍 para ver o perfil e produtos!
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+  const map = L.map('map').setView([-19.9167, -43.9345], 7);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© <a href="https://www.openstreetmap.org/">OpenStreetMap</a>',
+    maxZoom: 18,
+  }).addTo(map);
+
+  const farmIcon = L.divIcon({
+    html: '<div style="font-size:2rem;line-height:1;filter:drop-shadow(2px 2px 3px rgba(0,0,0,0.3))">🌾</div>',
+    className: '',
+    iconSize: [36, 36],
+    iconAnchor: [18, 36],
+    popupAnchor: [0, -36],
+  });
+
+  const producers = [
+    {% for producer in producers %}
+      {% if producer.latitude and producer.longitude %}
+        {
+          lat: {{ producer.latitude }},
+          lng: {{ producer.longitude }},
+          name: "{{ producer.farm_name|escapejs }}",
+          city: "{{ producer.city|escapejs }}",
+          url: "{% url 'producer_profile' producer.pk %}",
+          products: {{ producer.products.count }},
+        },
+      {% endif %}
+    {% endfor %}
+  ];
+
+  if (producers.length > 0) {
+    producers.forEach(p => {
+      L.marker([p.lat, p.lng], { icon: farmIcon })
+        .addTo(map)
+        .bindPopup(`
+          <div style="font-family:'Nunito',sans-serif;min-width:180px">
+            <strong style="font-size:1rem">🌾 ${p.name}</strong><br>
+            <span style="color:#777;font-size:0.85rem">📍 ${p.city}</span><br>
+            <span style="color:#777;font-size:0.85rem">🛒 ${p.products} produto(s)</span><br>
+            <a href="${p.url}" style="color:#43A047;font-weight:700;font-size:0.9rem">Ver perfil →</a>
+          </div>
+        `);
+    });
+    const lats = producers.map(p => p.lat);
+    const lngs = producers.map(p => p.lng);
+    map.fitBounds([[Math.min(...lats)-0.5, Math.min(...lngs)-0.5],[Math.max(...lats)+0.5, Math.max(...lngs)+0.5]]);
+  }
+</script>
+{% endblock %}

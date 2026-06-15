@@ -1,0 +1,139 @@
+﻿{% extends 'base.html' %}
+{% block title %}{{ category.name }} — Fazendinha{% endblock %}
+{% block content %}
+<div class="container py-5">
+  <div class="d-flex align-items-center gap-3 mb-4 flex-wrap">
+    <a href="{% url 'home' %}" class="btn btn-outline-secondary rounded-pill fw-700">← Início</a>
+    <h1 class="fw-900 mb-0">{{ category.get_icon }} {{ category.name }}</h1>
+    <span class="fw-700" style="color:var(--text-muted)">{{ products.paginator.count }} produto{{ products.paginator.count|pluralize }}</span>
+  </div>
+
+  <!-- Filtro de categorias -->
+  <div class="d-flex flex-wrap gap-2 mb-4">
+    {% for cat in categories %}
+      <a href="{% url 'category' cat.slug %}" class="category-pill text-decoration-none {% if cat.slug == category.slug %}active{% endif %}">
+        <span class="cat-icon">{{ cat.get_icon }}</span> {{ cat.name }}
+      </a>
+    {% endfor %}
+  </div>
+
+  <!-- Filtros de produto -->
+  <div class="farm-card p-3 mb-4">
+    <form method="get" class="row g-2 align-items-end">
+      <div class="col-sm-3">
+        <label class="form-label fw-700 mb-1" style="font-size:0.85rem">Preço mínimo</label>
+        <div class="input-group input-group-sm">
+          <span class="input-group-text fw-600">R$</span>
+          <input type="number" name="min_price" value="{{ min_price }}" class="form-control farm-input"
+                 placeholder="0" min="0" step="0.50">
+        </div>
+      </div>
+      <div class="col-sm-3">
+        <label class="form-label fw-700 mb-1" style="font-size:0.85rem">Preço máximo</label>
+        <div class="input-group input-group-sm">
+          <span class="input-group-text fw-600">R$</span>
+          <input type="number" name="max_price" value="{{ max_price }}" class="form-control farm-input"
+                 placeholder="999" min="0" step="0.50">
+        </div>
+      </div>
+      <div class="col-sm-3">
+        <label class="form-label fw-700 mb-1" style="font-size:0.85rem">Ordenar por</label>
+        <select name="sort" class="form-select form-select-sm farm-input">
+          <option value="newest" {% if sort == 'newest' %}selected{% endif %}>Mais recentes</option>
+          <option value="price_asc" {% if sort == 'price_asc' %}selected{% endif %}>Menor preço</option>
+          <option value="price_desc" {% if sort == 'price_desc' %}selected{% endif %}>Maior preço</option>
+        </select>
+      </div>
+      <div class="col-sm-3 d-flex align-items-end gap-3 pb-1">
+        <div class="form-check fw-700 mb-0">
+          <input class="form-check-input" type="checkbox" name="in_stock" value="1"
+                 id="inStockCheck" {% if in_stock %}checked{% endif %}>
+          <label class="form-check-label fw-700" for="inStockCheck" style="font-size:0.85rem">Só disponíveis</label>
+        </div>
+      </div>
+      <div class="col-12 d-flex gap-2">
+        <button type="submit" class="btn btn-farm btn-farm-sm">🔍 Filtrar</button>
+        <a href="{% url 'category' category.slug %}" class="btn btn-farm-sm fw-700"
+           style="background:var(--soft-yellow); border:1.5px solid var(--pastel-green); border-radius:20px">✕ Limpar</a>
+      </div>
+    </form>
+  </div>
+
+  {% if products %}
+    <div class="row g-4">
+      {% for product in products %}
+        <div class="col-6 col-md-4 col-lg-3">
+          <div class="product-card">
+            <a href="{% url 'product_detail' product.pk %}" class="text-decoration-none">
+              <div class="img-wrapper">
+                {% if product.photo %}<img src="{{ product.photo.url }}" alt="{{ product.name }}">
+                {% else %}<span>{{ product.get_icon }}</span>{% endif %}
+                {% if product.is_promotion %}<span class="badge-promo position-absolute top-0 end-0 m-2">🔥 Promo</span>{% endif %}
+              </div>
+            </a>
+            <div class="card-body">
+              <p class="product-producer mb-1">
+                <a href="{% url 'producer_profile' product.producer.pk %}" class="text-decoration-none text-muted">🏡 {{ product.producer.farm_name }}</a>
+              </p>
+              <a href="{% url 'product_detail' product.pk %}" class="text-decoration-none">
+                <p class="product-name">{{ product.name }}</p>
+              </a>
+              {% if product.weight %}<p class="mb-2" style="font-size:0.8rem;color:var(--text-muted)">⚖️ {{ product.weight }}</p>{% endif %}
+              <div class="mt-auto">
+                {% if product.is_promotion and product.promotion_price %}
+                  <div class="product-old-price">R$ {{ product.price }}</div>
+                  <div class="product-price" style="color:#e53935">R$ {{ product.promotion_price }}</div>
+                {% else %}
+                  <div class="product-price">R$ {{ product.price }}</div>
+                {% endif %}
+                {% if user.is_authenticated %}
+                  <form action="{% url 'add_to_cart' product.pk %}" method="post" class="mt-2">
+                    {% csrf_token %}<button class="btn btn-farm btn-farm-sm w-100">🛒 Adicionar</button>
+                  </form>
+                {% else %}
+                  <a href="{% url 'login' %}" class="btn btn-farm btn-farm-sm w-100 mt-2">🛒 Comprar</a>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty-state">
+      <div class="empty-icon">{{ category.get_icon }}</div>
+      <h4>Nenhum produto em {{ category.name }} ainda</h4>
+      <p class="fw-600" style="color:var(--text-muted)">Em breve novidades fresquinhas nessa categoria!</p>
+      <a href="{% url 'home' %}" class="btn btn-farm mt-3">🏡 Ver outros produtos</a>
+    </div>
+  {% endif %}
+
+  {% if products.has_other_pages %}
+    <nav class="mt-5 d-flex justify-content-center">
+      <ul class="pagination gap-1">
+        {% if products.has_previous %}
+          <li class="page-item">
+            <a class="page-link fw-700 rounded-pill" href="?{{ filter_query }}&page={{ products.previous_page_number }}">← Anterior</a>
+          </li>
+        {% endif %}
+        {% for num in products.paginator.page_range %}
+          {% if products.number == num %}
+            <li class="page-item active">
+              <span class="page-link fw-800 rounded-pill" style="background:var(--deeper-green); border-color:var(--deeper-green)">{{ num }}</span>
+            </li>
+          {% elif num > products.number|add:"-3" and num < products.number|add:"3" %}
+            <li class="page-item">
+              <a class="page-link fw-700 rounded-pill" href="?{{ filter_query }}&page={{ num }}">{{ num }}</a>
+            </li>
+          {% endif %}
+        {% endfor %}
+        {% if products.has_next %}
+          <li class="page-item">
+            <a class="page-link fw-700 rounded-pill" href="?{{ filter_query }}&page={{ products.next_page_number }}">Próxima →</a>
+          </li>
+        {% endif %}
+      </ul>
+    </nav>
+  {% endif %}
+</div>
+{% endblock %}

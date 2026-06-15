@@ -1,0 +1,168 @@
+{% extends 'base.html' %}
+{% block title %}🌻 Meus Produtos — Fazendinha{% endblock %}
+{% block content %}
+<div class="container py-5">
+  <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-3">
+    <div>
+      <h1 class="fw-900 mb-1">🌻 Meus Produtos</h1>
+      <p class="fw-600 mb-0" style="color:var(--text-muted)">Bem-vindo, {{ profile.farm_name }}! 🏡</p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+      <a href="{% url 'add_product' %}" class="btn btn-farm">➕ Novo produto</a>
+      <a href="{% url 'edit_producer_profile' %}" class="btn btn-farm-orange">⚙️ Editar perfil</a>
+      <a href="{% url 'producer_profile' profile.pk %}" class="btn btn-outline-secondary rounded-pill fw-700">👁️ Ver perfil público</a>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="row g-4 mb-5">
+    <div class="col-6 col-md-3">
+      <div class="stat-card">
+        <div class="stat-icon">📦</div>
+        <div class="stat-value">{{ products.count }}</div>
+        <div class="stat-label">Produtos</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="stat-card">
+        <div class="stat-icon">🛒</div>
+        <div class="stat-value">{{ pending }}</div>
+        <div class="stat-label">Pedidos pendentes</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="stat-card">
+        <div class="stat-icon">💰</div>
+        <div class="stat-value" style="font-size:1.4rem">R$ {{ total_sales|floatformat:2 }}</div>
+        <div class="stat-label">Total vendido</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="stat-card">
+        <div class="stat-icon">💬</div>
+        <div class="stat-value">{{ unread }}</div>
+        <div class="stat-label">Msg não lidas</div>
+        {% if unread > 0 %}<a href="{% url 'chat' %}" class="btn btn-farm btn-farm-sm mt-2">Ver mensagens</a>{% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <!-- Produtos -->
+    <div class="col-lg-7">
+      <div class="farm-card p-4">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <h4 class="fw-900 mb-0">🛒 Meus Produtos</h4>
+          <a href="{% url 'add_product' %}" class="btn btn-farm btn-farm-sm">➕ Adicionar</a>
+        </div>
+        {% if products %}
+          <div class="table-responsive">
+            <table class="table farm-table mb-0">
+              <thead><tr>
+                <th>Produto</th><th>Preço</th><th>Estoque</th><th>Status</th><th>Ações</th>
+              </tr></thead>
+              <tbody>
+                {% for product in products %}
+                  <tr>
+                    <td>
+                      <div class="d-flex align-items-center gap-2">
+                        <span style="font-size:1.4rem">{{ product.get_icon }}</span>
+                        <div>
+                          <div class="fw-700" style="font-size:0.88rem">{{ product.name }}</div>
+                          {% if product.weight %}<div style="font-size:0.75rem; color:var(--text-muted)">{{ product.weight }}</div>{% endif %}
+                        </div>
+                      </div>
+                    </td>
+                    <td class="fw-800" style="color:var(--deeper-green)">
+                      R$ {% if product.is_promotion and product.promotion_price %}{{ product.promotion_price }}{% else %}{{ product.price }}{% endif %}
+                    </td>
+                    <td class="fw-700">{{ product.stock }}</td>
+                    <td>
+                      {% if product.is_available %}
+                        <span class="status-badge status-delivery" style="font-size:0.75rem">✅ Ativo</span>
+                      {% else %}
+                        <span class="status-badge status-received" style="font-size:0.75rem">⏸️ Inativo</span>
+                      {% endif %}
+                    </td>
+                    <td>
+                      <div class="d-flex gap-1">
+                        <a href="{% url 'edit_product' product.pk %}" class="btn btn-sm btn-outline-secondary rounded-pill fw-700" style="font-size:0.75rem">✏️</a>
+                        <form action="{% url 'delete_product' product.pk %}" method="post" onsubmit="return confirm('Remover {{ product.name }}?')">
+                          {% csrf_token %}
+                          <button class="btn btn-sm btn-outline-danger rounded-pill fw-700" style="font-size:0.75rem">🗑️</button>
+                        </form>
+                      </div>
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <div class="empty-state py-3">
+            <div class="empty-icon" style="font-size:3rem">🌱</div>
+            <p class="fw-700">Nenhum produto ainda.</p>
+            <a href="{% url 'add_product' %}" class="btn btn-farm btn-farm-sm">➕ Adicionar produto</a>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Pedidos recentes -->
+    <div class="col-lg-5">
+      <div class="farm-card p-4">
+        <h4 class="fw-900 mb-3">📦 Pedidos Recentes</h4>
+        {% if recent_orders %}
+          <div class="d-flex flex-column gap-3">
+            {% for order in recent_orders %}
+              <div style="background:var(--soft-yellow); border:2px solid var(--border-green); border-radius:14px; padding:14px">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                  <div>
+                    <p class="fw-800 mb-0" style="font-size:0.9rem">Pedido #{{ order.pk }}</p>
+                    <p class="mb-0" style="font-size:0.78rem; color:var(--text-muted)">{{ order.consumer.get_full_name|default:order.consumer.username }}</p>
+                    <p class="mb-0" style="font-size:0.75rem; color:var(--text-muted)">{{ order.created_at|date:"d/m/Y H:i" }}</p>
+                  </div>
+                  <span class="fw-900" style="color:var(--deeper-green)">R$ {{ order.total }}</span>
+                </div>
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                  <span class="status-badge status-{{ order.status }}" style="font-size:0.75rem">
+                    {{ order.status_icon }} {{ order.get_status_display }}
+                  </span>
+                  {% if order.status == 'received' %}
+                    <form action="{% url 'update_order_status' order.pk %}" method="post">
+                      {% csrf_token %}<input type="hidden" name="status" value="preparing">
+                      <button class="btn btn-farm btn-farm-sm" style="font-size:0.75rem; background:var(--medium-green)">
+                        👨‍🍳 Iniciar preparo
+                      </button>
+                    </form>
+                  {% elif order.status == 'preparing' %}
+                    <form action="{% url 'update_order_status' order.pk %}" method="post">
+                      {% csrf_token %}<input type="hidden" name="status" value="delivery">
+                      <button class="btn btn-farm btn-farm-sm" style="font-size:0.75rem; background:#1976D2; border-color:#1976D2">
+                        🚚 Enviar para entrega
+                      </button>
+                    </form>
+                  {% elif order.status == 'delivery' %}
+                    <form action="{% url 'update_order_status' order.pk %}" method="post">
+                      {% csrf_token %}<input type="hidden" name="status" value="delivered">
+                      <button class="btn btn-farm btn-farm-sm" style="font-size:0.75rem; background:#6D4C41; border-color:#6D4C41">
+                        📦 Marcar como entregue
+                      </button>
+                    </form>
+                  {% endif %}
+                </div>
+                {% if order.notes %}<p class="mt-2 mb-0 fw-600" style="font-size:0.8rem; color:var(--text-muted)">📝 {{ order.notes }}</p>{% endif %}
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="empty-state py-3">
+            <div class="empty-icon" style="font-size:3rem">📭</div>
+            <p class="fw-700">Nenhum pedido ainda.</p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

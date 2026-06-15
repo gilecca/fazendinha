@@ -1,0 +1,22 @@
+﻿{% extends 'base.html' %}
+{% block title %}404 — Página não encontrada · Fazendinha{% endblock %}
+{% block content %}
+<div class="container py-5 text-center" style="min-height:60vh; display:flex; flex-direction:column; align-items:center; justify-content:center">
+  <div style="font-size:5rem; animation: float-slow 4s ease-in-out infinite">🌾</div>
+  <h1 class="fw-900 mt-3" style="font-size:4rem; color:var(--deeper-green)">404</h1>
+  <h3 class="fw-800 mb-2">Essa página foi colhida antes da hora!</h3>
+  <p class="fw-600 mb-4" style="color:var(--text-muted); max-width:400px">
+    Não encontramos o que você estava procurando. Pode ter sido removido ou o endereço está errado.
+  </p>
+  <div class="d-flex flex-wrap gap-3 justify-content-center">
+    <a href="{% url 'home' %}" class="btn btn-farm px-5">🏡 Voltar ao início</a>
+    <a href="{% url 'search' %}" class="btn btn-farm-outline px-5" style="border:2px solid var(--deeper-green); border-radius:20px; font-weight:800; color:var(--deeper-green); text-decoration:none; padding:8px 24px">🔍 Buscar produtos</a>
+  </div>
+  <div class="mt-5 d-flex justify-content-center gap-3">
+    <span class="farm-animal" style="font-size:2.5rem; animation-delay:0s">🐄</span>
+    <span class="farm-animal" style="font-size:2.5rem; animation-delay:0.5s">🐔</span>
+    <span class="farm-animal" style="font-size:2.5rem; animation-delay:1s">🐷</span>
+    <span class="farm-animal" style="font-size:2.5rem; animation-delay:1.5s">🌽</span>
+  </div>
+</div>
+{% endblock %}

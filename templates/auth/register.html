@@ -1,0 +1,103 @@
+﻿{% extends 'base.html' %}
+{% block title %}✍️ Cadastro — Fazendinha{% endblock %}
+{% block content %}
+<div class="auth-page py-5" style="align-items:flex-start; min-height:auto">
+  <div class="auth-card" style="max-width:580px">
+    <div class="auth-illustration">🌱</div>
+    <h2 class="text-center fw-900 mb-1">Criar conta</h2>
+    <p class="text-center fw-600 mb-4" style="color:var(--text-muted)">Junte-se à nossa comunidade do campo 🐔🌽</p>
+
+    <form method="post" enctype="multipart/form-data">
+      {% csrf_token %}
+
+      <!-- Tipo de usuário -->
+      <div class="mb-4">
+        <label class="form-label fw-800 fs-6">{{ form.user_type.label }}</label>
+        <div class="row g-3">
+          {% for radio in form.user_type %}
+            <div class="col-6">
+              <label class="w-100 cursor-pointer">
+                <input type="radio" name="user_type" value="{{ radio.data.value }}" class="d-none user-type-radio"
+                  {% if radio.data.selected %}checked{% endif %}>
+                <div class="p-3 text-center border-farm rounded-farm fw-700 user-type-label"
+                     style="font-size:0.88rem; cursor:pointer; transition:all 0.2s; background:var(--soft-yellow)">
+                  {{ radio.choice_label }}
+                </div>
+              </label>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="row g-3">
+        <div class="col-6">
+          <label class="form-label fw-700">{{ form.first_name.label }}</label>
+          {{ form.first_name }}
+        </div>
+        <div class="col-6">
+          <label class="form-label fw-700">{{ form.last_name.label }}</label>
+          {{ form.last_name }}
+        </div>
+        <div class="col-12">
+          <label class="form-label fw-700">{{ form.username.label }}</label>
+          {{ form.username }}
+          {% if form.username.errors %}<div class="text-danger fw-600" style="font-size:0.83rem">{{ form.username.errors.0 }}</div>{% endif %}
+        </div>
+        <div class="col-12">
+          <label class="form-label fw-700">{{ form.email.label }}</label>
+          {{ form.email }}
+        </div>
+        <div class="col-6">
+          <label class="form-label fw-700">{{ form.phone.label }}</label>
+          {{ form.phone }}
+        </div>
+        <div class="col-6">
+          <label class="form-label fw-700">{{ form.city.label }}</label>
+          {{ form.city }}
+        </div>
+
+        <!-- Campo só para produtor -->
+        <div class="col-12" id="farm-name-group" style="display:none">
+          <label class="form-label fw-700">🌾 {{ form.farm_name.label }}</label>
+          {{ form.farm_name }}
+        </div>
+
+        <div class="col-12">
+          <label class="form-label fw-700">{{ form.photo.label }}</label>
+          {{ form.photo }}
+        </div>
+        <div class="col-6">
+          <label class="form-label fw-700">{{ form.password1.label }}</label>
+          {{ form.password1 }}
+          {% if form.password1.errors %}<div class="text-danger fw-600" style="font-size:0.83rem">{{ form.password1.errors.0 }}</div>{% endif %}
+        </div>
+        <div class="col-6">
+          <label class="form-label fw-700">{{ form.password2.label }}</label>
+          {{ form.password2 }}
+          {% if form.password2.errors %}<div class="text-danger fw-600" style="font-size:0.83rem">{{ form.password2.errors.0 }}</div>{% endif %}
+        </div>
+      </div>
+
+      {% if form.non_field_errors %}
+        <div class="alert alert-danger mt-3 fw-700">{{ form.non_field_errors.0 }}</div>
+      {% endif %}
+
+      <button type="submit" class="btn btn-farm w-100 py-2 mt-4">🌱 Criar minha conta</button>
+    </form>
+
+    <div class="fence-divider my-3"><span>🌻</span></div>
+    <p class="text-center fw-600 mb-0">
+      Já tem conta? <a href="{% url 'login' %}" class="fw-800 text-decoration-none" style="color:var(--deeper-green)">Entrar 🔑</a>
+    </p>
+  </div>
+</div>
+
+<style>
+.user-type-radio:checked + .user-type-label {
+  background: linear-gradient(135deg, var(--dark-green), var(--deeper-green)) !important;
+  color: white !important;
+  border-color: var(--deeper-green) !important;
+  box-shadow: 0 4px 15px rgba(76,175,80,0.35);
+}
+</style>
+{% endblock %}

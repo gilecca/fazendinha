@@ -1,0 +1,144 @@
+﻿{% extends 'base.html' %}
+{% block title %}{{ producer.farm_name }} — Fazendinha{% endblock %}
+{% block content %}
+<div class="container py-5">
+  <div class="row g-4">
+    <!-- Perfil -->
+    <div class="col-lg-4">
+      <div class="farm-card overflow-hidden">
+        <div class="producer-banner">
+          {% if producer.cover_photo %}
+            <img src="{{ producer.cover_photo.url }}" class="producer-banner-img" alt="">
+          {% else %}
+            <div class="producer-banner-decor">🌾🌻🐄</div>
+            <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:5rem">🏡</div>
+          {% endif %}
+        </div>
+        <div class="p-4 text-center" style="margin-top:-30px; position:relative">
+          {% if producer.user.photo %}
+            <img src="{{ producer.user.photo.url }}" class="producer-avatar mb-3" style="width:80px;height:80px;border:4px solid white" alt="">
+          {% else %}
+            <div class="producer-avatar-placeholder mb-3" style="border:4px solid white">🧑‍🌾</div>
+          {% endif %}
+          <h3 class="fw-900 mb-1">{{ producer.farm_name }}</h3>
+          <p class="fw-700 mb-2" style="color:var(--text-muted)">por {{ producer.user.get_full_name|default:producer.user.username }}</p>
+          {% if producer.is_premium %}<span class="badge-destaque mb-2 d-inline-block">👑 Produtor Premium</span>{% endif %}
+          {% with avg=producer.get_average_rating %}
+            {% if avg > 0 %}
+              <div class="stars-display mb-2" style="font-size:1.3rem">
+                {% for i in "12345" %}{% if forloop.counter <= avg %}⭐{% else %}<span style="opacity:0.3">⭐</span>{% endif %}{% endfor %}
+                <span class="fw-800 ms-1" style="font-size:0.9rem; color:var(--text-muted)">({{ avg }})</span>
+              </div>
+            {% endif %}
+          {% endwith %}
+          <div class="d-flex justify-content-center gap-3 mt-3 flex-wrap">
+            {% if producer.city %}<span class="fw-700" style="font-size:0.85rem; color:var(--text-muted)">📍 {{ producer.city }}{% if producer.state %}, {{ producer.state }}{% endif %}</span>{% endif %}
+            {% if producer.user.phone %}<span class="fw-700" style="font-size:0.85rem; color:var(--text-muted)">📱 {{ producer.user.phone }}</span>{% endif %}
+          </div>
+          {% if producer.description %}
+            <p class="fw-600 mt-3 mb-0 text-start" style="font-size:0.92rem; color:var(--warm-brown); background:var(--soft-yellow); border-radius:12px; padding:12px">{{ producer.description }}</p>
+          {% endif %}
+          {% if user.is_authenticated and user != producer.user %}
+            <a href="{% url 'chat_with' producer.user.pk %}" class="btn btn-farm w-100 mt-3">💬 Enviar mensagem</a>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Produtos e avaliações -->
+    <div class="col-lg-8">
+      <h3 class="section-title">🛒 Produtos disponíveis</h3>
+      {% if products %}
+        <div class="row g-3 mb-5">
+          {% for product in products %}
+            <div class="col-6 col-md-4">
+              <div class="product-card">
+                <a href="{% url 'product_detail' product.pk %}" class="text-decoration-none">
+                  <div class="img-wrapper" style="height:140px">
+                    {% if product.photo %}<img src="{{ product.photo.url }}" alt="{{ product.name }}">
+                    {% else %}<span>{{ product.get_icon }}</span>{% endif %}
+                    {% if product.is_promotion %}<span class="badge-promo position-absolute top-0 end-0 m-2" style="font-size:0.65rem">🔥 Promo</span>{% endif %}
+                  </div>
+                </a>
+                <div class="card-body p-3">
+                  <a href="{% url 'product_detail' product.pk %}" class="text-decoration-none">
+                    <p class="product-name mb-1" style="font-size:0.88rem">{{ product.name }}</p>
+                  </a>
+                  {% if product.weight %}<p class="mb-1" style="font-size:0.75rem;color:var(--text-muted)">{{ product.weight }}</p>{% endif %}
+                  {% if product.is_promotion and product.promotion_price %}
+                    <div class="product-old-price" style="font-size:0.8rem">R$ {{ product.price }}</div>
+                    <div class="product-price" style="font-size:1.1rem; color:#e53935">R$ {{ product.promotion_price }}</div>
+                  {% else %}
+                    <div class="product-price" style="font-size:1.1rem">R$ {{ product.price }}</div>
+                  {% endif %}
+                  {% if user.is_authenticated %}
+                    <form action="{% url 'add_to_cart' product.pk %}" method="post" class="mt-2">
+                      {% csrf_token %}<button class="btn btn-farm btn-farm-sm w-100" style="font-size:0.8rem">🛒 Adicionar</button>
+                    </form>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="empty-state py-4"><div class="empty-icon">🌱</div><h5>Nenhum produto disponível</h5></div>
+      {% endif %}
+
+      <!-- Avaliações -->
+      <h3 class="section-title">⭐ Avaliações</h3>
+      {% if reviews %}
+        <div class="d-flex flex-column gap-3 mb-4">
+          {% for review in reviews %}
+            <div class="review-card">
+              <div class="d-flex align-items-center gap-2 mb-2">
+                <span style="font-size:1.8rem">{% if review.reviewer.photo %}<img src="{{ review.reviewer.photo.url }}" class="rounded-circle" width="36" height="36" style="object-fit:cover">{% else %}👤{% endif %}</span>
+                <div>
+                  <p class="fw-800 mb-0" style="font-size:0.9rem">{{ review.reviewer.get_full_name|default:review.reviewer.username }}</p>
+                  <p class="mb-0" style="font-size:0.75rem; color:var(--text-muted)">{{ review.created_at|date:"d/m/Y" }}</p>
+                </div>
+                <div class="ms-auto stars-display">{{ review.stars }}</div>
+              </div>
+              <div class="d-flex gap-3 mb-2 flex-wrap">
+                <span class="fw-700" style="font-size:0.8rem">🧀 Qualidade: {{ review.quality }}/5</span>
+                <span class="fw-700" style="font-size:0.8rem">🚚 Entrega: {{ review.delivery }}/5</span>
+                <span class="fw-700" style="font-size:0.8rem">😊 Atendimento: {{ review.service }}/5</span>
+              </div>
+              {% if review.comment %}<p class="fw-600 mb-0" style="font-size:0.9rem; font-style:italic">"{{ review.comment }}"</p>{% endif %}
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="fw-600" style="color:var(--text-muted)">Ainda sem avaliações. Seja o primeiro! 🌟</p>
+      {% endif %}
+
+      <!-- Formulário de avaliação -->
+      {% if user.is_authenticated and user != producer.user %}
+        {% if already_reviewed %}
+          <div class="farm-alert alert alert-success fw-700">✅ Você já avaliou este produtor!</div>
+        {% elif can_review %}
+          <div class="farm-card p-4">
+            <h5 class="fw-900 mb-3">✍️ Deixar avaliação</h5>
+            <form action="{% url 'add_review' producer.pk %}" method="post">
+              {% csrf_token %}
+              <div class="row g-3">
+                {% for field in review_form %}
+                  <div class="col-md-{% if field.name == 'comment' %}12{% else %}4{% endif %}">
+                    <label class="form-label fw-700 mb-1">{{ field.label }}</label>
+                    {{ field }}
+                  </div>
+                {% endfor %}
+              </div>
+              <button type="submit" class="btn btn-farm mt-3">⭐ Enviar avaliação</button>
+            </form>
+          </div>
+        {% else %}
+          <div class="farm-alert alert alert-info fw-700" style="background:var(--soft-yellow); border:none">
+            🛒 Receba um pedido deste produtor para poder avaliá-lo.
+          </div>
+        {% endif %}
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

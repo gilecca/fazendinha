@@ -1,0 +1,214 @@
+﻿{% extends 'base.html' %}
+{% block title %}💬 Chat com {{ other_user.get_full_name|default:other_user.username }} — Fazendinha{% endblock %}
+
+{% block content %}
+<div class="container py-5" style="max-width:720px">
+
+  <!-- Header -->
+  <div class="d-flex align-items-center gap-3 mb-4">
+    <a href="{% url 'chat' %}" class="btn btn-outline-secondary rounded-pill fw-700">← Conversas</a>
+    <div class="d-flex align-items-center gap-2 flex-grow-1">
+      {% if other_user.photo %}
+        <img src="{{ other_user.photo.url }}" class="rounded-circle" width="46" height="46"
+             style="object-fit:cover; border:3px solid var(--medium-green); flex-shrink:0">
+      {% else %}
+        <div style="width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,var(--pastel-green),var(--medium-green));display:flex;align-items:center;justify-content:center;font-size:1.5rem;flex-shrink:0">
+          {% if other_user.is_producer %}🧑‍🌾{% else %}👤{% endif %}
+        </div>
+      {% endif %}
+      <div>
+        <div class="fw-900">{{ other_user.get_full_name|default:other_user.username }}</div>
+        <div class="d-flex align-items-center gap-2">
+          <span class="fw-600" style="font-size:0.78rem; color:var(--text-muted)">
+            {% if other_user.is_producer %}🌾 Produtor{% else %}👤 Consumidor{% endif %}
+            {% if other_user.city %} · 📍 {{ other_user.city }}{% endif %}
+          </span>
+          <!-- Indicador de conexão -->
+          <span id="ws-status" style="font-size:0.72rem; font-weight:700; color:#aaa">
+            ● conectando...
+          </span>
+        </div>
+      </div>
+    </div>
+    {% if other_user.is_producer and other_user.producer_profile %}
+      <a href="{% url 'producer_profile' other_user.producer_profile.pk %}"
+         class="btn btn-farm btn-farm-sm d-none d-md-block">🏡 Ver fazenda</a>
+    {% endif %}
+  </div>
+
+  <!-- Mensagens -->
+  <div class="chat-container mb-3" id="chat-box">
+    {% if messages_list %}
+      {% for msg in messages_list %}
+        <div class="d-flex {% if msg.sender == request.user %}justify-content-end{% else %}justify-content-start{% endif %}">
+          <div class="message-bubble {% if msg.sender == request.user %}sent{% else %}received{% endif %}">
+            {{ msg.content }}
+            <span class="message-time">{{ msg.created_at|date:"d/m H:i" }}</span>
+          </div>
+        </div>
+      {% endfor %}
+    {% else %}
+      <div class="text-center py-5" style="color:var(--text-muted)" id="empty-hint">
+        <div style="font-size:3.5rem">💬</div>
+        <p class="fw-700 mt-2">Nenhuma mensagem ainda.<br>Diga olá! 👋</p>
+      </div>
+    {% endif %}
+
+    <!-- Indicador de digitação -->
+    <div id="typing-indicator" style="display:none" class="d-flex justify-content-start">
+      <div class="message-bubble received" style="padding:10px 16px">
+        <span style="letter-spacing:2px">●●●</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Input -->
+  <div class="chat-input-area">
+    <div class="d-flex gap-2">
+      <input type="text" id="msg-input" class="form-control farm-input flex-grow-1"
+             placeholder="Digite sua mensagem... 💬"
+             autocomplete="off" maxlength="500">
+      <button id="send-btn" class="btn btn-farm px-4 fw-800" disabled>Enviar ›</button>
+    </div>
+    <p class="mt-2 mb-0 fw-600" style="font-size:0.78rem; color:var(--text-muted)">
+      💡 Pergunte sobre disponibilidade, combine entregas ou pedidos especiais!
+    </p>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  const chatBox = document.getElementById('chat-box');
+  const msgInput = document.getElementById('msg-input');
+  const sendBtn = document.getElementById('send-btn');
+  const wsStatus = document.getElementById('ws-status');
+  const typingIndicator = document.getElementById('typing-indicator');
+
+  const currentUserId = {{ request.user.id }};
+  const otherUserId = {{ other_user.id }};
+
+  // Room name é os dois IDs ordenados para garantir a mesma sala
+  const roomName = [Math.min(currentUserId, otherUserId), Math.max(currentUserId, otherUserId)].join('_');
+  // Usa wss:// em HTTPS (produção) e ws:// em HTTP (local)
+  const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const wsUrl = `${wsProtocol}//${window.location.host}/ws/chat/${roomName}/`;
+
+  let socket;
+  let typingTimer;
+
+  function scrollToBottom() {
+    chatBox.scrollTop = chatBox.scrollHeight;
+  }
+
+  function appendMessage(content, isSent, senderName, timestamp) {
+    const emptyHint = document.getElementById('empty-hint');
+    if (emptyHint) emptyHint.remove();
+
+    const wrapper = document.createElement('div');
+    wrapper.className = `d-flex ${isSent ? 'justify-content-end' : 'justify-content-start'}`;
+    wrapper.innerHTML = `
+      <div class="message-bubble ${isSent ? 'sent' : 'received'}" style="animation:fadeInUp 0.2s ease">
+        ${escapeHtml(content)}
+        <span class="message-time">${timestamp}</span>
+      </div>`;
+    typingIndicator.before(wrapper);
+    scrollToBottom();
+  }
+
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.appendChild(document.createTextNode(text));
+    return div.innerHTML;
+  }
+
+  function connect() {
+    socket = new WebSocket(wsUrl);
+
+    socket.onopen = () => {
+      wsStatus.textContent = '● online';
+      wsStatus.style.color = '#43A047';
+      sendBtn.disabled = false;
+      msgInput.disabled = false;
+      msgInput.focus();
+    };
+
+    socket.onclose = () => {
+      wsStatus.textContent = '● desconectado';
+      wsStatus.style.color = '#e53935';
+      sendBtn.disabled = true;
+      // Tenta reconectar após 3 segundos
+      setTimeout(connect, 3000);
+    };
+
+    socket.onerror = () => {
+      wsStatus.textContent = '● erro de conexão';
+      wsStatus.style.color = '#e53935';
+    };
+
+    socket.onmessage = (e) => {
+      const data = JSON.parse(e.data);
+
+      if (data.type === 'typing') {
+        if (data.sender_id !== currentUserId) {
+          typingIndicator.style.display = 'flex';
+          scrollToBottom();
+          clearTimeout(typingTimer);
+          typingTimer = setTimeout(() => typingIndicator.style.display = 'none', 2000);
+        }
+        return;
+      }
+
+      if (data.type === 'chat_message') {
+        typingIndicator.style.display = 'none';
+        const isSent = data.sender_id === currentUserId;
+        appendMessage(data.content, isSent, data.sender_name, data.timestamp);
+      }
+    };
+  }
+
+  function sendMessage() {
+    const content = msgInput.value.trim();
+    if (!content || socket.readyState !== WebSocket.OPEN) return;
+
+    socket.send(JSON.stringify({
+      content: content,
+      receiver_id: otherUserId,
+    }));
+    msgInput.value = '';
+    msgInput.focus();
+  }
+
+  // Enviar ao clicar
+  sendBtn.addEventListener('click', sendMessage);
+
+  // Enviar com Enter, Shift+Enter adiciona quebra de linha
+  msgInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  });
+
+  // Indicador de digitação
+  msgInput.addEventListener('input', () => {
+    if (socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({ type: 'typing', sender_id: currentUserId }));
+    }
+  });
+
+  // Iniciar conexão
+  msgInput.disabled = true;
+  connect();
+  scrollToBottom();
+})();
+</script>
+
+<style>
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+</style>
+{% endblock %}

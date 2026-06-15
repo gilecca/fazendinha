@@ -1,0 +1,95 @@
+﻿{% extends 'base.html' %}
+{% block title %}🛒 Carrinho — Fazendinha{% endblock %}
+{% block content %}
+<div class="container py-5">
+  <h1 class="fw-900 mb-4">🛒 Meu Carrinho</h1>
+
+  {% if cart.items.all %}
+    <div class="row g-4">
+      <!-- Itens -->
+      <div class="col-lg-8">
+        <div class="d-flex flex-column gap-3">
+          {% for item in cart.items.all %}
+            <div class="cart-item d-flex align-items-center gap-3 flex-wrap">
+              <!-- Ícone/foto -->
+              <div class="cart-item-icon">
+                {% if item.product.photo %}
+                  <img src="{{ item.product.photo.url }}" alt="" style="width:60px;height:60px;border-radius:12px;object-fit:cover">
+                {% else %}
+                  {{ item.product.get_icon }}
+                {% endif %}
+              </div>
+
+              <!-- Info -->
+              <div class="flex-grow-1">
+                <a href="{% url 'product_detail' item.product.pk %}" class="text-decoration-none">
+                  <h6 class="fw-800 mb-1">{{ item.product.name }}</h6>
+                </a>
+                <p class="mb-1 fw-600" style="font-size:0.82rem; color:var(--text-muted)">
+                  🏡 {{ item.product.producer.farm_name }}
+                  {% if item.product.weight %} · ⚖️ {{ item.product.weight }}{% endif %}
+                </p>
+                <p class="fw-800 mb-0" style="color:var(--deeper-green)">R$ {{ item.product.current_price }} un.</p>
+              </div>
+
+              <!-- Quantidade -->
+              <form action="{% url 'update_cart' item.pk %}" method="post" class="d-flex align-items-center gap-2">
+                {% csrf_token %}
+                <div class="qty-control">
+                  <button type="submit" name="quantity" value="{{ item.quantity|add:'-1' }}" class="qty-btn">−</button>
+                  <span class="fw-800" style="min-width:20px; text-align:center">{{ item.quantity }}</span>
+                  <button type="submit" name="quantity" value="{{ item.quantity|add:'1' }}" class="qty-btn">+</button>
+                </div>
+              </form>
+
+              <!-- Subtotal -->
+              <div class="text-end" style="min-width:80px">
+                <div class="fw-900" style="font-size:1.15rem; color:var(--deeper-green)">R$ {{ item.subtotal }}</div>
+              </div>
+
+              <!-- Remover -->
+              <form action="{% url 'remove_from_cart' item.pk %}" method="post">
+                {% csrf_token %}
+                <button class="btn btn-sm btn-outline-danger rounded-pill fw-700" title="Remover">🗑️</button>
+              </form>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Resumo -->
+      <div class="col-lg-4">
+        <div class="order-summary">
+          <h4 class="fw-900 mb-4">📋 Resumo do Pedido</h4>
+          <div class="d-flex flex-column gap-2 mb-3">
+            {% for item in cart.items.all %}
+              <div class="d-flex justify-content-between fw-700" style="font-size:0.88rem">
+                <span>{{ item.product.name }} × {{ item.quantity }}</span>
+                <span>R$ {{ item.subtotal }}</span>
+              </div>
+            {% endfor %}
+          </div>
+          <div class="fence-divider my-3"><span>🌾</span></div>
+          <div class="d-flex justify-content-between align-items-center mb-4">
+            <span class="fw-800 fs-5">Total</span>
+            <span class="fw-900 fs-4" style="color:var(--deeper-green)">R$ {{ cart.total }}</span>
+          </div>
+          <a href="{% url 'checkout' %}" class="btn btn-farm w-100 py-3" style="font-size:1.05rem">
+            ✅ Finalizar pedido
+          </a>
+          <a href="{% url 'home' %}" class="btn btn-outline-secondary rounded-pill w-100 mt-2 fw-700">
+            🛍️ Continuar comprando
+          </a>
+        </div>
+      </div>
+    </div>
+  {% else %}
+    <div class="empty-state">
+      <div class="empty-icon">🛒</div>
+      <h4>Seu carrinho está vazio</h4>
+      <p class="fw-600" style="color:var(--text-muted)">Que tal adicionar alguns produtos fresquinhos?</p>
+      <a href="{% url 'home' %}" class="btn btn-farm mt-3">🌾 Ver produtos</a>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

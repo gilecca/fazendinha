@@ -1,0 +1,103 @@
+﻿{% extends 'base.html' %}
+{% block title %}📦 Meus Pedidos — Fazendinha{% endblock %}
+{% block content %}
+<div class="container py-5">
+  <h1 class="fw-900 mb-4">📦 Meus Pedidos</h1>
+
+  {% if orders %}
+    <div class="d-flex flex-column gap-4">
+      {% for order in orders %}
+        <div class="farm-card p-4">
+          <!-- Cabeçalho -->
+          <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+            <div>
+              <h5 class="fw-900 mb-1">Pedido #{{ order.pk }}</h5>
+              <p class="fw-600 mb-0" style="font-size:0.85rem; color:var(--text-muted)">
+                🏡 {{ order.producer.farm_name }} · {{ order.created_at|date:"d/m/Y \à\s H:i" }}
+              </p>
+            </div>
+            <div class="d-flex align-items-center gap-3">
+              <span class="fw-900" style="font-size:1.2rem; color:var(--deeper-green)">R$ {{ order.total }}</span>
+              <span class="status-badge status-{{ order.status }}">
+                {{ order.status_icon }} {{ order.get_status_display }}
+              </span>
+            </div>
+          </div>
+
+          <!-- Timeline de progresso -->
+          <div class="mb-3">
+            <div class="timeline-track">
+              <div class="timeline-step {% if order.status == 'received' %}active{% elif order.status == 'preparing' or order.status == 'delivery' or order.status == 'delivered' %}done{% endif %}">
+                <div class="timeline-dot">📬</div>
+                <div class="timeline-label">Recebido</div>
+              </div>
+              <div class="timeline-step {% if order.status == 'preparing' %}active{% elif order.status == 'delivery' or order.status == 'delivered' %}done{% endif %}">
+                <div class="timeline-dot">👨‍🍳</div>
+                <div class="timeline-label">Preparo</div>
+              </div>
+              <div class="timeline-step {% if order.status == 'delivery' %}active{% elif order.status == 'delivered' %}done{% endif %}">
+                <div class="timeline-dot">🚚</div>
+                <div class="timeline-label">Na entrega</div>
+              </div>
+              <div class="timeline-step {% if order.status == 'delivered' %}done{% endif %}">
+                <div class="timeline-dot">✅</div>
+                <div class="timeline-label">Entregue</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Itens do pedido -->
+          <div style="background:var(--soft-yellow); border-radius:var(--radius-sm); padding:14px">
+            <p class="fw-800 mb-2" style="font-size:0.85rem">🛒 Itens:</p>
+            <div class="d-flex flex-wrap gap-3">
+              {% for item in order.items.all %}
+                <div class="d-flex align-items-center gap-2">
+                  <span style="font-size:1.4rem">
+                    {% if item.product.photo %}
+                      <img src="{{ item.product.photo.url }}" style="width:32px;height:32px;border-radius:8px;object-fit:cover" alt="">
+                    {% else %}{{ item.product.get_icon }}{% endif %}
+                  </span>
+                  <div>
+                    <div class="fw-700" style="font-size:0.82rem">{{ item.product.name }}</div>
+                    <div class="fw-600" style="font-size:0.75rem; color:var(--text-muted)">× {{ item.quantity }} · R$ {{ item.subtotal }}</div>
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
+          </div>
+
+          {% if order.address %}
+            <p class="fw-600 mt-2 mb-0" style="font-size:0.82rem; color:var(--text-muted)">📍 {{ order.address }}</p>
+          {% endif %}
+          {% if order.notes %}
+            <p class="fw-600 mt-1 mb-0" style="font-size:0.82rem; color:var(--text-muted)">📝 {{ order.notes }}</p>
+          {% endif %}
+
+          <div class="mt-3 d-flex flex-wrap gap-2">
+            <a href="{% url 'chat_with' order.producer.user.pk %}" class="btn btn-farm-orange btn-farm-sm">
+              💬 Falar com {{ order.producer.farm_name }}
+            </a>
+            {% if order.status == 'pending_payment' or order.status == 'received' or order.status == 'preparing' %}
+              <form action="{% url 'cancel_order' order.pk %}" method="post" class="d-inline"
+                    onsubmit="return confirm('Cancelar o pedido #{{ order.pk }}? Esta ação não pode ser desfeita.')">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-farm-sm fw-700"
+                        style="background:var(--soft-yellow); border:1.5px solid #e53935; color:#e53935; border-radius:20px">
+                  ❌ Cancelar pedido
+                </button>
+              </form>
+            {% endif %}
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty-state">
+      <div class="empty-icon">📭</div>
+      <h4>Nenhum pedido ainda</h4>
+      <p class="fw-600" style="color:var(--text-muted)">Que tal fazer seu primeiro pedido?</p>
+      <a href="{% url 'home' %}" class="btn btn-farm mt-3">🌾 Ver produtos</a>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}
