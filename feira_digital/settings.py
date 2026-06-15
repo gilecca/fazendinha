@@ -131,6 +131,7 @@ if _email_user and _email_pass:
     EMAIL_USE_TLS = True
     EMAIL_HOST_USER = _email_user
     EMAIL_HOST_PASSWORD = _email_pass
+    EMAIL_TIMEOUT = 10
 else:
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
