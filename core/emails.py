@@ -1,4 +1,5 @@
 import secrets
+import threading
 from django.core.mail import send_mail
 from django.conf import settings
 
@@ -6,13 +7,9 @@ from django.conf import settings
 def _send(subject, body, to_email):
     if not to_email:
         return
-    send_mail(
-        subject,
-        body,
-        settings.DEFAULT_FROM_EMAIL,
-        [to_email],
-        fail_silently=True,
-    )
+    def _do():
+        send_mail(subject, body, settings.DEFAULT_FROM_EMAIL, [to_email], fail_silently=True)
+    threading.Thread(target=_do, daemon=True).start()
 
 
 def send_email_verification(user, request):

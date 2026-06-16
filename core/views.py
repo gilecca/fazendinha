@@ -40,7 +40,7 @@ def home(request):
     # Produtos em destaque aparecem primeiro; os demais completam até 16
     featured = Product.objects.filter(is_featured=True, is_available=True).select_related('category', 'producer')[:8]
     all_products = Product.objects.filter(is_available=True).select_related('category', 'producer').order_by('-created_at')[:16]
-    producers = ProducerProfile.objects.filter(user__is_active=True).select_related('user').order_by('-is_premium', '?')[:8]
+    producers = ProducerProfile.objects.filter(user__is_active=True).select_related('user').order_by('-is_premium', '-pk')[:8]
     return render(request, 'home.html', {
         'featured': featured,
         'promotions': promotions,
@@ -543,7 +543,8 @@ def producer_dashboard(request):
     )
     products = profile.products.all().select_related('category')
     recent_orders = profile.orders.all().prefetch_related('items__product').order_by('-created_at')[:10]
-    total_sales = sum(o.total for o in profile.orders.filter(status='delivered'))
+    from django.db.models import Sum
+    total_sales = profile.orders.filter(status='delivered').aggregate(t=Sum('total'))['t'] or 0
     pending = profile.orders.filter(status__in=['received', 'preparing']).count()
     unread = Message.objects.filter(receiver=request.user, is_read=False).count()
     return render(request, 'producer/dashboard.html', {

@@ -57,6 +57,35 @@ if (userTypeRadios.length && farmNameGroup) {
   toggleFarmName();
 }
 
+// Emojis 3D fofinhos — envolve todos os emojis em <span class="emoji-3d">
+(function () {
+  const EMOJI_RE = /(\p{Extended_Pictographic}(‍\p{Extended_Pictographic})*)/gu;
+  const SKIP = new Set(['SCRIPT', 'STYLE', 'INPUT', 'TEXTAREA', 'SELECT', 'OPTION']);
+
+  function processNode(node) {
+    if (node.nodeType === 3) {
+      if (!EMOJI_RE.test(node.textContent)) return;
+      EMOJI_RE.lastIndex = 0;
+      const frag = document.createDocumentFragment();
+      let last = 0, m;
+      while ((m = EMOJI_RE.exec(node.textContent)) !== null) {
+        if (m.index > last) frag.appendChild(document.createTextNode(node.textContent.slice(last, m.index)));
+        const sp = document.createElement('span');
+        sp.className = 'emoji-3d';
+        sp.textContent = m[0];
+        frag.appendChild(sp);
+        last = EMOJI_RE.lastIndex;
+      }
+      if (last < node.textContent.length) frag.appendChild(document.createTextNode(node.textContent.slice(last)));
+      node.parentNode.replaceChild(frag, node);
+    } else if (node.nodeType === 1 && !SKIP.has(node.tagName)) {
+      Array.from(node.childNodes).forEach(processNode);
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', function () { processNode(document.body); });
+})();
+
 function getCookie(name) {
   let cookieValue = null;
   if (document.cookie && document.cookie !== '') {

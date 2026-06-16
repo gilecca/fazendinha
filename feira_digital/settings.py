@@ -91,9 +91,20 @@ STATIC_URL = '/static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
+# ── Supabase ──────────────────────────────────────────────────
+SUPABASE_URL = config('SUPABASE_URL', default='')
+SUPABASE_SERVICE_KEY = config('SUPABASE_SERVICE_KEY', default='')
+SUPABASE_BUCKET = config('SUPABASE_BUCKET', default='media')
+
+_use_supabase = bool(SUPABASE_URL and SUPABASE_SERVICE_KEY)
+
 STORAGES = {
     'default': {
-        'BACKEND': 'django.core.files.storage.FileSystemStorage',
+        'BACKEND': (
+            'core.storage.SupabaseStorage'
+            if _use_supabase
+            else 'django.core.files.storage.FileSystemStorage'
+        ),
     },
     'staticfiles': {
         'BACKEND': (

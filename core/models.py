@@ -1,15 +1,30 @@
+from io import BytesIO
+
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.core.validators import MinValueValidator, MaxValueValidator
 from PIL import Image
 
 
-def _resize_image(path, max_w=800, max_h=800):
+def _resize_image(image_field, max_w=800, max_h=800):
+    """Resize image in memory before it is saved to storage.
+
+    Works with both local FileSystemStorage and cloud backends (e.g. Supabase).
+    Called BEFORE super().save() so the resized bytes reach the storage backend.
+    """
+    if not image_field or getattr(image_field, '_committed', True):
+        return
     try:
-        img = Image.open(path)
-        if img.width > max_w or img.height > max_h:
-            img.thumbnail((max_w, max_h), Image.LANCZOS)
-            img.save(path, quality=85, optimize=True)
+        img = Image.open(image_field.file)
+        if img.width <= max_w and img.height <= max_h:
+            return
+        if img.mode not in ('RGB', 'RGBA'):
+            img = img.convert('RGB')
+        img.thumbnail((max_w, max_h), Image.LANCZOS)
+        buf = BytesIO()
+        img.save(buf, format='JPEG', quality=85, optimize=True)
+        buf.seek(0)
+        image_field.file = buf
     except Exception:
         pass
 
@@ -39,9 +54,8 @@ class User(AbstractUser):
         return self.user_type == 'consumer'
 
     def save(self, *args, **kwargs):
+        _resize_image(self.photo, 400, 400)
         super().save(*args, **kwargs)
-        if self.photo:
-            _resize_image(self.photo.path, 400, 400)
 
 
 class ProducerProfile(models.Model):
@@ -72,9 +86,8 @@ class ProducerProfile(models.Model):
         return int(avg)
 
     def save(self, *args, **kwargs):
+        _resize_image(self.cover_photo, 1200, 600)
         super().save(*args, **kwargs)
-        if self.cover_photo:
-            _resize_image(self.cover_photo.path, 1200, 600)
 
 
 CATEGORY_ICONS = {
@@ -131,9 +144,8 @@ class Product(models.Model):
         return '🌾'
 
     def save(self, *args, **kwargs):
+        _resize_image(self.photo, 800, 800)
         super().save(*args, **kwargs)
-        if self.photo:
-            _resize_image(self.photo.path, 800, 800)
 
 
 class Order(models.Model):
@@ -241,10 +253,11 @@ class Cart(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def total(self):
-        return sum(item.subtotal() for item in self.items.all())
+        return sum(item.subtotal() for item in self.items.select_related('product').all())
 
     def item_count(self):
-        return sum(item.quantity for item in self.items.all())
+        from django.db.models import Sum
+        return self.items.aggregate(n=Sum('quantity'))['n'] or 0
 
 
 class CartItem(models.Model):
