@@ -1,7 +1,7 @@
 from pathlib import Path
 from decouple import config, Csv
 import dj_database_url
-
+#aaaaaaaaaaaa
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = config('SECRET_KEY', default='django-insecure-feira-digital-fazendinha-key-2024')
