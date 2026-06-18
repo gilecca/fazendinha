@@ -138,11 +138,12 @@ _email_pass = config('EMAIL_HOST_PASSWORD', default='')
 if _email_user and _email_pass:
     EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
     EMAIL_HOST = 'smtp.gmail.com'
-    EMAIL_PORT = 587
-    EMAIL_USE_TLS = True
+    EMAIL_PORT = 465
+    EMAIL_USE_SSL = True
+    EMAIL_USE_TLS = False
     EMAIL_HOST_USER = _email_user
     EMAIL_HOST_PASSWORD = _email_pass
-    EMAIL_TIMEOUT = 10
+    EMAIL_TIMEOUT = 15
 else:
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
