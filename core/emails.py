@@ -8,16 +8,20 @@ def _send(subject, body, to_email):
     if not to_email:
         return
     def _do():
-        send_mail(subject, body, settings.DEFAULT_FROM_EMAIL, [to_email], fail_silently=True)
-    threading.Thread(target=_do, daemon=True).start()
+        try:
+            send_mail(subject, body, settings.DEFAULT_FROM_EMAIL, [to_email], fail_silently=False)
+        except Exception:
+            pass
+    threading.Thread(target=_do, daemon=False).start()
 
 
 def send_email_verification(user, request):
-    token = secrets.token_urlsafe(32)
-    user.email_token = token
-    user.save(update_fields=['email_token'])
-    verify_url = request.build_absolute_uri(f'/verificar-email/{token}/')
-    body = f"""Olá {user.first_name or user.username},
+    try:
+        token = secrets.token_urlsafe(32)
+        user.email_token = token
+        user.save(update_fields=['email_token'])
+        verify_url = request.build_absolute_uri(f'/verificar-email/{token}/')
+        body = f"""Olá {user.first_name or user.username},
 
 Confirme seu e-mail clicando no link abaixo:
 {verify_url}
@@ -27,7 +31,9 @@ Se não foi você, ignore este e-mail.
 
 Fazendinha 🌾
 """
-    _send('[Fazendinha] Confirme seu e-mail', body, user.email)
+        _send('[Fazendinha] Confirme seu e-mail', body, user.email)
+    except Exception:
+        pass
 
 
 def notify_new_message(sender, receiver):

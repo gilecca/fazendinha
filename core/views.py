@@ -87,8 +87,11 @@ def register_view(request):
             Cart.objects.create(user=user)
             login(request, user)
             if user.email:
-                send_email_verification(user, request)
-                messages.success(request, f'Bem-vindo(a), {user.get_full_name() or user.username}! Confirme seu e-mail para garantir acesso completo. 🌾')
+                try:
+                    send_email_verification(user, request)
+                    messages.success(request, f'Bem-vindo(a), {user.get_full_name() or user.username}! Confirme seu e-mail para garantir acesso completo. 🌾')
+                except Exception:
+                    messages.success(request, f'Bem-vindo(a), {user.get_full_name() or user.username}! 🌾')
             else:
                 messages.success(request, f'Bem-vindo(a), {user.get_full_name() or user.username}! 🌾')
             return redirect('home')

@@ -146,7 +146,7 @@ if _email_user and _email_pass:
 else:
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
-DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='Fazendinha <noreply@fazendinha.com.br>')
+DEFAULT_FROM_EMAIL = f'Fazendinha <{_email_user}>' if _email_user else 'Fazendinha <noreply@fazendinha.com.br>'
 
 # ── Taxa de serviço ───────────────────────────────────────────
 # Percentual retido da plataforma sobre cada venda do produtor.
