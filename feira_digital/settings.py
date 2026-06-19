@@ -153,3 +153,20 @@ DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default=f'Fazendinha <{_email_
 # Percentual retido da plataforma sobre cada venda do produtor.
 # Ex: 10 → 10%. Altere via env SERVICE_FEE_PERCENT=10
 SERVICE_FEE_PERCENT = config('SERVICE_FEE_PERCENT', default=10, cast=int)
+
+# ── Logging ───────────────────────────────────────────────────
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {'class': 'logging.StreamHandler'},
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
+    'loggers': {
+        'core.emails': {'handlers': ['console'], 'level': 'DEBUG', 'propagate': False},
+        'django': {'handlers': ['console'], 'level': 'WARNING', 'propagate': False},
+    },
+}

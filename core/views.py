@@ -20,6 +20,20 @@ from django.db import transaction
 from django.db.models import F
 
 
+def test_email_view(request):
+    if not request.user.is_superuser:
+        from django.http import HttpResponseForbidden
+        return HttpResponseForbidden()
+    from django.core.mail import send_mail
+    from django.conf import settings as s
+    try:
+        send_mail('Teste produção', 'Funcionou em produção!',
+                  s.DEFAULT_FROM_EMAIL, [request.user.email], fail_silently=False)
+        return HttpResponse(f'✅ Enviado para {request.user.email} | HOST={s.EMAIL_HOST} PORT={s.EMAIL_PORT} TLS={s.EMAIL_USE_TLS} SSL={s.EMAIL_USE_SSL}')
+    except Exception as e:
+        return HttpResponse(f'❌ Erro: {e}', status=500)
+
+
 def service_worker(request):
     return render(request, 'pwa/sw.js', content_type='application/javascript; charset=utf-8')
 

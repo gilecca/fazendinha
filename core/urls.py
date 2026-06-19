@@ -43,6 +43,7 @@ urlpatterns = [
     path('perfil/', views.edit_consumer_profile, name='edit_consumer_profile'),
     path('pedido/<int:pk>/cancelar/', views.cancel_order, name='cancel_order'),
 
+    path('debug/email/', views.test_email_view, name='test_email'),
     path('sw.js', views.service_worker, name='service_worker'),
     path('offline/', views.offline_view, name='offline'),
 
