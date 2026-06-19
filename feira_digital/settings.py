@@ -132,22 +132,32 @@ STRIPE_PUBLIC_KEY = config('STRIPE_PUBLIC_KEY', default='pk_test_COLOQUE-SUA-CHA
 STRIPE_WEBHOOK_SECRET = config('STRIPE_WEBHOOK_SECRET', default='whsec_COLOQUE-SEU-SECRET-AQUI')
 
 # ── E-mail ────────────────────────────────────────────────────
-_email_user = config('EMAIL_HOST_USER', default='')
-_email_pass = config('EMAIL_HOST_PASSWORD', default='')
+_brevo_api_key = config('BREVO_API_KEY', default='')
+_email_user    = config('EMAIL_HOST_USER', default='')
+_email_pass    = config('EMAIL_HOST_PASSWORD', default='')
 
-if _email_user and _email_pass:
+if _brevo_api_key:
+    # API HTTP — funciona em Railway e qualquer hospedagem (sem SMTP)
+    EMAIL_BACKEND = 'anymail.backends.brevo.EmailBackend'
+    ANYMAIL = {'BREVO_API_KEY': _brevo_api_key}
+    INSTALLED_APPS += ['anymail']
+elif _email_user and _email_pass:
+    # Fallback SMTP (local)
     EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-    EMAIL_HOST = config('EMAIL_HOST', default='smtp.gmail.com')
-    EMAIL_PORT = config('EMAIL_PORT', default=465, cast=int)
-    EMAIL_USE_SSL = config('EMAIL_USE_SSL', default=True, cast=bool)
-    EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=False, cast=bool)
-    EMAIL_HOST_USER = _email_user
+    EMAIL_HOST     = config('EMAIL_HOST', default='smtp-relay.brevo.com')
+    EMAIL_PORT     = config('EMAIL_PORT', default=587, cast=int)
+    EMAIL_USE_TLS  = config('EMAIL_USE_TLS', default=True, cast=bool)
+    EMAIL_USE_SSL  = config('EMAIL_USE_SSL', default=False, cast=bool)
+    EMAIL_HOST_USER     = _email_user
     EMAIL_HOST_PASSWORD = _email_pass
-    EMAIL_TIMEOUT = 15
+    EMAIL_TIMEOUT  = 15
 else:
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
-DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default=f'Fazendinha <{_email_user}>' if _email_user else 'Fazendinha <noreply@fazendinha.com.br>')
+DEFAULT_FROM_EMAIL = config(
+    'DEFAULT_FROM_EMAIL',
+    default=f'Fazendinha <{_email_user}>' if _email_user else 'Fazendinha <noreply@fazendinha.com.br>',
+)
 
 # ── Taxa de serviço ───────────────────────────────────────────
 # Percentual retido da plataforma sobre cada venda do produtor.
