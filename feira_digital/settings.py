@@ -120,6 +120,8 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+SITE_URL = config('SITE_URL', default='http://127.0.0.1:8000').rstrip('/')
+
 # ── Stripe ────────────────────────────────────────────────────
 # Configure no .env:
 #   STRIPE_SECRET_KEY=sk_test_...   (nunca exposta no frontend)

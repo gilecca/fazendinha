@@ -171,5 +171,102 @@
     });
   }
 </script>
+
+<!-- PWA Install Banner (Android/Chrome/Edge) -->
+<div id="pwa-banner" class="pwa-banner" role="dialog" aria-label="Instalar aplicativo" style="display:none">
+  <div class="pwa-banner-inner">
+    <div class="pwa-banner-icon">🌾</div>
+    <div class="pwa-banner-text">
+      <strong>Instalar Fazendinha</strong>
+      <span>Acesse como app, funciona offline e carrega mais rápido!</span>
+    </div>
+    <div class="pwa-banner-actions">
+      <button id="pwa-install-btn" class="btn btn-farm btn-farm-sm fw-800">Instalar</button>
+      <button id="pwa-dismiss-btn" class="pwa-close" aria-label="Fechar">✕</button>
+    </div>
+  </div>
+</div>
+
+<!-- PWA Install Banner (iOS Safari) -->
+<div id="pwa-ios-banner" class="pwa-banner pwa-banner-ios" role="dialog" aria-label="Como instalar no iPhone" style="display:none">
+  <div class="pwa-banner-inner">
+    <button id="pwa-ios-close" class="pwa-close" aria-label="Fechar">✕</button>
+    <div class="pwa-banner-icon">🌾</div>
+    <div class="pwa-banner-text">
+      <strong>Instalar Fazendinha no iPhone</strong>
+      <span>Toque em <span class="pwa-share-icon">↑ Compartilhar</span> e depois em <strong>"Adicionar à Tela Início"</strong></span>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var STORAGE_KEY = 'fz_pwa_dismissed';
+  var DELAY_MS    = 4000;
+
+  function isIOS() {
+    return /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
+  }
+  function isStandalone() {
+    return window.matchMedia('(display-mode: standalone)').matches ||
+           window.navigator.standalone === true;
+  }
+  function isDismissed() {
+    return !!localStorage.getItem(STORAGE_KEY);
+  }
+  function dismiss(key) {
+    localStorage.setItem(STORAGE_KEY, '1');
+    hideBanner(key);
+  }
+  function showBanner(id) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.style.display = 'block';
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () { el.classList.add('pwa-visible'); });
+    });
+  }
+  function hideBanner(id) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.classList.remove('pwa-visible');
+    setTimeout(function () { el.style.display = 'none'; }, 420);
+  }
+
+  // Não mostra se já instalado ou já recusou
+  if (isStandalone() || isDismissed()) return;
+
+  var deferredPrompt = null;
+
+  // Android / Chrome / Edge
+  window.addEventListener('beforeinstallprompt', function (e) {
+    e.preventDefault();
+    deferredPrompt = e;
+    setTimeout(function () { showBanner('pwa-banner'); }, DELAY_MS);
+  });
+
+  document.getElementById('pwa-install-btn').addEventListener('click', function () {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.then(function () {
+      deferredPrompt = null;
+      dismiss('pwa-banner');
+    });
+  });
+
+  document.getElementById('pwa-dismiss-btn').addEventListener('click', function () {
+    dismiss('pwa-banner');
+  });
+
+  // iOS Safari (sem beforeinstallprompt)
+  if (isIOS()) {
+    setTimeout(function () { showBanner('pwa-ios-banner'); }, DELAY_MS);
+  }
+
+  document.getElementById('pwa-ios-close').addEventListener('click', function () {
+    dismiss('pwa-ios-banner');
+  });
+})();
+</script>
 </body>
 </html>
