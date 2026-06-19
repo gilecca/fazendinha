@@ -43,6 +43,9 @@ urlpatterns = [
     path('perfil/', views.edit_consumer_profile, name='edit_consumer_profile'),
     path('pedido/<int:pk>/cancelar/', views.cancel_order, name='cancel_order'),
 
+    path('sw.js', views.service_worker, name='service_worker'),
+    path('offline/', views.offline_view, name='offline'),
+
     path('verificar-email/reenviar/', views.resend_verification, name='resend_verification'),
     path('verificar-email/<str:token>/', views.verify_email, name='verify_email'),
 

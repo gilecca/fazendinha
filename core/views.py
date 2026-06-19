@@ -20,6 +20,14 @@ from django.db import transaction
 from django.db.models import F
 
 
+def service_worker(request):
+    return render(request, 'pwa/sw.js', content_type='application/javascript; charset=utf-8')
+
+
+def offline_view(request):
+    return render(request, 'pwa/offline.html')
+
+
 def decrement_stock_for_order(order):
     """Decrementa estoque atomicamente e desativa produtos sem estoque."""
     with transaction.atomic():

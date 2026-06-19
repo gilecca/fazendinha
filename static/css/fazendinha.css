@@ -89,6 +89,15 @@ h1, h2, h3, h4, h5, h6 { font-weight: 800; color: var(--text-dark); }
   box-shadow: var(--shadow-md);
 }
 
+/* ===== NAVBAR BUSCA ===== */
+.navbar-search-form { flex: 0 0 auto; }
+.navbar-search-input { max-width: 260px; }
+
+@media (max-width: 991px) {
+  .navbar-search-form { width: 100%; }
+  .navbar-search-input { max-width: 100%; }
+}
+
 /* ===== BOTÕES ===== */
 .btn-farm {
   background: linear-gradient(135deg, var(--dark-green), var(--deeper-green));
@@ -882,10 +891,138 @@ h1, h2, h3, h4, h5, h6 { font-weight: 800; color: var(--text-dark); }
 }
 
 /* ===== RESPONSIVE ===== */
-@media (max-width: 768px) {
-  .hero-section { padding: 50px 0 40px; }
+
+/* ── Tablet (< 992px) ─────────────────────────────────────── */
+@media (max-width: 991px) {
+  .order-summary {
+    position: relative;
+    top: auto;
+  }
+  .map-producer-list { max-height: 300px; }
+  .producer-banner { height: 180px; }
+}
+
+/* ── Mobile (< 768px) ─────────────────────────────────────── */
+@media (max-width: 767px) {
+  /* Hero */
+  .hero-section { padding: 40px 0 28px; }
   .hero-illustration { display: none; }
-  .auth-card { padding: 28px 20px; }
-  .chat-container { height: 320px; }
-  .timeline-label { font-size: 0.65rem; }
+
+  /* Navbar — busca ocupa largura total no menu aberto */
+  .navbar-farm .input-group { max-width: 100% !important; }
+  .navbar-farm form.d-flex { width: 100%; }
+
+  /* Seções */
+  .section-title { font-size: 1.35rem; margin-bottom: 16px; }
+
+  /* Produto — cards menores */
+  .product-card .img-wrapper { height: 140px; font-size: 3rem; }
+
+  /* Detalhe produto */
+  .product-detail-img,
+  .product-detail-placeholder { height: 260px; }
+  .product-detail-placeholder { font-size: 5.5rem; }
+
+  /* Produtor banner */
+  .producer-banner { height: 150px; }
+
+  /* Stats dashboard */
+  .stat-card { padding: 16px 12px; }
+  .stat-icon { font-size: 2.2rem; }
+  .stat-value { font-size: 1.6rem; }
+
+  /* Timeline pedidos */
+  .timeline-dot { width: 38px; height: 38px; font-size: 1.05rem; }
+  .timeline-label { font-size: 0.62rem; }
+  .timeline-track::before { left: 10%; right: 10%; top: 19px; }
+
+  /* Chat */
+  .chat-container { height: 300px; }
+  .message-bubble { max-width: 88%; }
+
+  /* Auth */
+  .auth-card { padding: 24px 18px; }
+  .auth-page { padding: 24px 12px; }
+  .auth-illustration { font-size: 4rem; }
+
+  /* Promo banner — emojis decorativos escondem no mobile */
+  .promo-banner::after { display: none; }
+  .promo-banner { padding: 16px 20px; }
+
+  /* Tabela dashboard — menor fonte */
+  .farm-table thead th,
+  .farm-table tbody td { padding: 10px 10px; font-size: 0.82rem; }
+
+  /* Footer */
+  .farm-footer { margin-top: 48px; }
+
+  /* Cart — organiza em grid 2 linhas no mobile */
+  .cart-item {
+    display: grid !important;
+    grid-template-columns: 60px 1fr auto auto;
+    grid-template-areas:
+      "icon info  price remove"
+      "icon qty   qty   remove";
+    align-items: center;
+    gap: 6px 10px;
+  }
+  .cart-item .cart-item-icon  { grid-area: icon; align-self: start; margin-top: 4px; }
+  .cart-item .flex-grow-1     { grid-area: info; min-width: 0; }
+  .cart-item .text-end        { grid-area: price; min-width: 0 !important; text-align: right !important; }
+  .cart-item form:last-of-type { grid-area: remove; }
+  .cart-item form:first-of-type { grid-area: qty; }
+}
+
+/* ── Small mobile (< 576px) ───────────────────────────────── */
+@media (max-width: 575px) {
+  /* Hero */
+  .hero-title { font-size: 1.8rem !important; line-height: 1.2 !important; }
+  .hero-sub { font-size: 0.92rem; }
+
+  /* Produto cards menores */
+  .product-card .img-wrapper { height: 118px; font-size: 2.6rem; }
+  .product-card .product-name { font-size: 0.86rem; }
+  .product-card .product-price { font-size: 1.1rem; }
+  .product-card .card-body { padding: 12px; }
+
+  /* Detalhe produto */
+  .product-detail-img,
+  .product-detail-placeholder { height: 220px; }
+
+  /* Produtor banner */
+  .producer-banner { height: 120px; }
+  .producer-banner-overlay { padding: 12px; }
+
+  /* Timeline — muito pequena, usa scroll horizontal */
+  .order-timeline { overflow-x: auto; padding-bottom: 8px; }
+  .timeline-track { min-width: 320px; }
+  .timeline-dot { width: 32px; height: 32px; font-size: 0.88rem; }
+  .timeline-label { font-size: 0.56rem; }
+
+  /* Chat — faz altura dinâmica */
+  .chat-container { height: 58vh; min-height: 240px; }
+  .message-bubble { max-width: 92%; font-size: 0.88rem; }
+
+  /* Auth */
+  .auth-card { padding: 20px 14px; }
+  .auth-illustration { font-size: 3.5rem; }
+
+  /* Seção title */
+  .section-title { font-size: 1.15rem; }
+
+  /* Stats */
+  .stat-value { font-size: 1.35rem; }
+  .stat-icon { font-size: 1.9rem; }
+  .stat-label { font-size: 0.78rem; }
+
+  /* Resumo do pedido no checkout — texto menor */
+  .order-summary { padding: 18px 16px; }
+
+  /* Categoria pills menores */
+  .category-pill { padding: 8px 14px; font-size: 0.82rem; }
+  .category-pill .cat-icon { font-size: 1.2rem; }
+
+  /* Botões — evita texto quebrar */
+  .btn-farm, .btn-farm-orange { font-size: 0.88rem; padding: 9px 20px; }
+  .btn-farm-sm { padding: 5px 14px; font-size: 0.8rem; }
 }
