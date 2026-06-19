@@ -21,15 +21,20 @@ from django.db.models import F
 
 
 def test_email_view(request):
-    if not request.user.is_superuser:
-        from django.http import HttpResponseForbidden
-        return HttpResponseForbidden()
+    to = request.GET.get('to', '')
+    if not to:
+        return HttpResponse('Passe ?to=seuemail@exemplo.com na URL')
     from django.core.mail import send_mail
     from django.conf import settings as s
     try:
-        send_mail('Teste produção', 'Funcionou em produção!',
-                  s.DEFAULT_FROM_EMAIL, [request.user.email], fail_silently=False)
-        return HttpResponse(f'✅ Enviado para {request.user.email} | HOST={s.EMAIL_HOST} PORT={s.EMAIL_PORT} TLS={s.EMAIL_USE_TLS} SSL={s.EMAIL_USE_SSL}')
+        send_mail('Teste produção Fazendinha', 'Email de teste enviado com sucesso!',
+                  s.DEFAULT_FROM_EMAIL, [to], fail_silently=False)
+        return HttpResponse(
+            f'✅ Enviado para {to}<br>'
+            f'HOST={s.EMAIL_HOST} PORT={s.EMAIL_PORT} '
+            f'TLS={s.EMAIL_USE_TLS} SSL={s.EMAIL_USE_SSL}<br>'
+            f'FROM={s.DEFAULT_FROM_EMAIL}'
+        )
     except Exception as e:
         return HttpResponse(f'❌ Erro: {e}', status=500)
 
