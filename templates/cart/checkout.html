@@ -1,5 +1,16 @@
 ﻿{% extends 'base.html' %}
 {% block title %}💳 Finalizar Pedido — Fazendinha{% endblock %}
+{% block extra_css %}
+<style>
+  .pay-box{background:var(--soft-yellow); border:2px solid var(--border-green); border-radius:var(--radius-md)}
+  .card-brand{font-weight:800; font-size:0.62rem; letter-spacing:.4px; padding:3px 7px; border-radius:6px;
+    background:#fff; border:1.5px solid var(--border-green); color:var(--deeper-green)}
+  .pay-feature{display:flex; align-items:center; gap:8px; font-weight:600; font-size:0.82rem; color:var(--text-muted)}
+  #payment-element{margin-top:4px}
+  .pay-error{color:#c0392b; font-weight:700; font-size:0.85rem; min-height:1.1em}
+  #pay-btn:disabled{opacity:.7; cursor:progress}
+</style>
+{% endblock %}
 {% block content %}
 <div class="container py-5" style="max-width:860px">
   <div class="d-flex align-items-center gap-3 mb-4">
@@ -16,32 +27,50 @@
           {% csrf_token %}
           <div class="mb-3">
             <label class="form-label fw-700">📍 Endereço completo</label>
-            <textarea name="address" class="form-control farm-input" rows="3"
+            <textarea name="address" id="address" class="form-control farm-input" rows="3"
               placeholder="Rua, número, bairro, cidade, CEP...">{{ user.city }}</textarea>
           </div>
           <div class="mb-4">
             <label class="form-label fw-700">📝 Observações (opcional)</label>
-            <textarea name="notes" class="form-control farm-input" rows="2"
+            <textarea name="notes" id="notes" class="form-control farm-input" rows="2"
               placeholder="Ex: Deixar na portaria, ligar antes de entregar..."></textarea>
           </div>
 
-          <!-- Métodos de pagamento -->
-          <div class="p-3 mb-4" style="background:var(--soft-yellow); border:2px solid var(--border-green); border-radius:var(--radius-md)">
-            <p class="fw-800 mb-2">💳 Métodos de pagamento aceitos</p>
-            <div class="d-flex flex-wrap gap-2">
-              <span class="fw-700 px-3 py-1 rounded-pill" style="background:#009EE3; color:white; font-size:0.82rem">Stripe</span>
-              <span class="fw-700 px-3 py-1 rounded-pill" style="background:#32BCAD; color:white; font-size:0.82rem">💚 PIX</span>
-              <span class="fw-700 px-3 py-1 rounded-pill" style="background:#4CAF50; color:white; font-size:0.82rem">💳 Cartão</span>
-              <span class="fw-700 px-3 py-1 rounded-pill" style="background:#795548; color:white; font-size:0.82rem">📄 Boleto</span>
+          {% if stripe_enabled %}
+          <!-- Pagamento com cartão (formulário embutido — não sai da página) -->
+          <div class="pay-box p-3 mb-4">
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+              <p class="fw-800 mb-0">💳 Dados do cartão</p>
+              <div class="d-flex flex-wrap gap-1">
+                <span class="card-brand">VISA</span>
+                <span class="card-brand">MASTER</span>
+                <span class="card-brand">ELO</span>
+                <span class="card-brand">AMEX</span>
+              </div>
             </div>
-            <p class="fw-600 mt-2 mb-0" style="font-size:0.8rem; color:var(--text-muted)">
-              🔒 Pagamento seguro processado pelo Stripe. Você será redirecionado para concluir.
-            </p>
+
+            <!-- Stripe Payment Element é montado aqui -->
+            <div id="payment-element"></div>
+            <div id="card-errors" class="pay-error mt-2" role="alert"></div>
+
+            <div class="pay-feature mt-3">🔒 Pagamento criptografado — o número do cartão nunca passa pelo nosso site</div>
           </div>
 
           <button type="submit" class="btn btn-farm w-100 py-3" style="font-size:1.1rem" id="pay-btn">
-            🔒 Ir para pagamento
+            🔒 Pagar R$ {{ cart.total }}
           </button>
+          {% else %}
+          <!-- Modo de teste: chaves do Stripe não configuradas -->
+          <div class="pay-box p-3 mb-4">
+            <p class="fw-800 mb-1">💳 Pagamento</p>
+            <p class="fw-600 mb-0" style="font-size:0.82rem; color:var(--text-muted)">
+              ⚠️ Pagamento online indisponível (chaves do Stripe não configuradas). O pedido será registrado em modo de teste.
+            </p>
+          </div>
+          <button type="submit" class="btn btn-farm w-100 py-3" style="font-size:1.1rem" id="pay-btn">
+            Finalizar pedido (teste)
+          </button>
+          {% endif %}
         </form>
       </div>
 
@@ -96,7 +125,7 @@
         </div>
 
         <p class="fw-600 mt-3 mb-0 text-center" style="font-size:0.78rem; color:var(--text-muted)">
-          Ao pagar você será redirecionado para o Stripe 🔒
+          Pagamento processado com segurança nesta página 🔒
         </p>
       </div>
     </div>
@@ -104,12 +133,100 @@
 </div>
 
 {% block extra_js %}
+{% if stripe_enabled %}
+<script src="https://js.stripe.com/v3/"></script>
 <script>
-document.getElementById('checkout-form').addEventListener('submit', function() {
+  const stripe = Stripe("{{ stripe_public_key }}");
+
+  // Aparência personalizada com as cores da Fazendinha
+  const elements = stripe.elements({
+    mode: 'payment',
+    amount: {{ total_cents }},
+    currency: 'brl',
+    paymentMethodTypes: ['card'],
+    appearance: {
+      theme: 'flat',
+      variables: {
+        colorPrimary: '#3f9142',
+        colorText: '#3d3a33',
+        colorTextSecondary: '#7a7568',
+        colorBackground: '#ffffff',
+        colorDanger: '#c0392b',
+        borderRadius: '12px',
+        fontSizeBase: '15px',
+        spacingUnit: '4px',
+      },
+      rules: {
+        '.Input': { border: '2px solid var(--border-green, #cfe3c4)', boxShadow: 'none', padding: '12px' },
+        '.Input:focus': { border: '2px solid #3f9142', boxShadow: '0 0 0 3px rgba(63,145,66,.15)' },
+        '.Label': { fontWeight: '700', marginBottom: '6px' },
+      },
+    },
+  });
+  const paymentElement = elements.create('payment', { layout: 'tabs' });
+  paymentElement.mount('#payment-element');
+
+  const form = document.getElementById('checkout-form');
   const btn = document.getElementById('pay-btn');
-  btn.disabled = true;
-  btn.innerHTML = '⏳ Redirecionando para pagamento...';
-});
+  const errBox = document.getElementById('card-errors');
+  const csrftoken = form.querySelector('[name=csrfmiddlewaretoken]').value;
+  const PAY_LABEL = '🔒 Pagar R$ {{ cart.total }}';
+
+  function setLoading(on) {
+    btn.disabled = on;
+    btn.innerHTML = on ? '⏳ Processando pagamento...' : PAY_LABEL;
+  }
+  function showError(msg) {
+    errBox.textContent = msg || 'Não foi possível concluir o pagamento. Tente novamente.';
+    setLoading(false);
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    errBox.textContent = '';
+
+    // 1) Valida os campos do cartão no Payment Element
+    const { error: submitError } = await elements.submit();
+    if (submitError) { showError(submitError.message); return; }
+
+    // 2) Cria os pedidos + PaymentIntent no backend
+    let data;
+    try {
+      const resp = await fetch("{% url 'create_payment_intent' %}", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrftoken },
+        body: JSON.stringify({
+          address: document.getElementById('address').value,
+          notes: document.getElementById('notes').value,
+        }),
+      });
+      data = await resp.json();
+      if (!resp.ok) { showError(data.error); return; }
+    } catch (err) {
+      showError('Falha de conexão. Verifique sua internet e tente novamente.');
+      return;
+    }
+
+    // 3) Confirma o pagamento sem sair da página
+    const { error } = await stripe.confirmPayment({
+      elements,
+      clientSecret: data.clientSecret,
+      confirmParams: { return_url: "{{ success_url }}" },
+    });
+    // Se houver erro imediato (ex.: cartão recusado) mostramos aqui;
+    // em caso de sucesso o Stripe redireciona para a página de sucesso.
+    if (error) { showError(error.message); }
+  });
 </script>
+{% else %}
+<script>
+  document.getElementById('checkout-form').addEventListener('submit', function () {
+    const btn = document.getElementById('pay-btn');
+    btn.disabled = true;
+    btn.innerHTML = '⏳ Processando...';
+  });
+</script>
+{% endif %}
 {% endblock %}
 {% endblock %}

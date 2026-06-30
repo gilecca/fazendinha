@@ -20,6 +20,7 @@ urlpatterns = [
     path('carrinho/remover/<int:item_id>/', views.remove_from_cart, name='remove_from_cart'),
     path('carrinho/atualizar/<int:item_id>/', views.update_cart, name='update_cart'),
     path('finalizar/', views.checkout, name='checkout'),
+    path('pagamento/criar-intent/', views.create_payment_intent, name='create_payment_intent'),
     path('pagamento/sucesso/', views.payment_success, name='payment_success'),
     path('pagamento/falhou/', views.payment_failure, name='payment_failure'),
     path('pagamento/pendente/', views.payment_pending, name='payment_pending'),

@@ -276,115 +276,178 @@ def update_cart(request, item_id):
     return redirect('cart')
 
 
+def _validate_cart_stock(cart):
+    """Revalida estoque com leitura fresca do banco. Retorna lista de erros."""
+    stock_errors = []
+    for item in cart.items.select_related('product').all():
+        fresh = Product.objects.get(pk=item.product.pk)
+        if fresh.stock <= 0:
+            stock_errors.append(f'"{fresh.name}" ficou sem estoque')
+        elif item.quantity > fresh.stock:
+            stock_errors.append(f'"{fresh.name}" — disponível: {fresh.stock}')
+    return stock_errors
+
+
+def _create_pending_orders(user, cart, address, notes):
+    """Cria os pedidos agrupados por produtor. Retorna (order_ids, total)."""
+    order_ids = []
+    grand_total = 0
+    items_by_producer = {}
+    for item in cart.items.select_related('product__producer').all():
+        items_by_producer.setdefault(item.product.producer, []).append(item)
+
+    for producer, items in items_by_producer.items():
+        order = Order.objects.create(
+            consumer=user, producer=producer,
+            address=address, notes=notes, status='pending_payment',
+        )
+        total = 0
+        for item in items:
+            price = item.product.current_price()
+            OrderItem.objects.create(order=order, product=item.product,
+                                     quantity=item.quantity, price=price)
+            total += price * item.quantity
+        order.total = total
+        order.save()
+        order_ids.append(order.pk)
+        grand_total += total
+    return order_ids, grand_total
+
+
+def _stripe_enabled():
+    return (settings.STRIPE_SECRET_KEY.startswith('sk_')
+            and settings.STRIPE_PUBLIC_KEY.startswith('pk_'))
+
+
 @login_required
 def checkout(request):
     cart, _ = Cart.objects.get_or_create(user=request.user)
     if not cart.items.exists():
         return redirect('cart')
-    if request.method == 'POST':
+
+    # Fallback simulado: quando o Stripe não está configurado, mantemos o
+    # checkout por POST que aprova o pedido na hora (apenas para dev/teste).
+    if request.method == 'POST' and not _stripe_enabled():
         address = request.POST.get('address', '')
         notes = request.POST.get('notes', '')
-
-        # Revalida estoque com leitura fresca do banco
-        stock_errors = []
-        for item in cart.items.select_related('product').all():
-            fresh = Product.objects.get(pk=item.product.pk)
-            if fresh.stock <= 0:
-                stock_errors.append(f'"{fresh.name}" ficou sem estoque')
-            elif item.quantity > fresh.stock:
-                stock_errors.append(f'"{fresh.name}" — disponível: {fresh.stock}')
+        stock_errors = _validate_cart_stock(cart)
         if stock_errors:
             messages.error(request, 'Estoque insuficiente: ' + '; '.join(stock_errors) + '. Ajuste seu carrinho.')
             return redirect('cart')
+        order_ids, _total = _create_pending_orders(request.user, cart, address, notes)
+        cart.items.all().delete()
+        orders = Order.objects.filter(pk__in=order_ids)
+        orders.update(status='received', payment_status='approved')
+        for order in orders:
+            decrement_stock_for_order(order)
+            notify_producer_new_order(order)
+            notify_consumer_payment_confirmed(order)
+        messages.warning(request, '⚠️ Pagamento simulado — configure as chaves do Stripe no .env.')
+        return redirect('orders')
 
-        # Cria os pedidos agrupados por produtor com status pending_payment
-        order_ids = []
-        items_by_producer = {}
-        for item in cart.items.select_related('product__producer').all():
-            prod = item.product.producer
-            items_by_producer.setdefault(prod, []).append(item)
+    return render(request, 'cart/checkout.html', {
+        'cart': cart,
+        'stripe_enabled': _stripe_enabled(),
+        'stripe_public_key': settings.STRIPE_PUBLIC_KEY,
+        'total_cents': int(cart.total() * 100),
+        'success_url': request.build_absolute_uri('/pagamento/sucesso/'),
+    })
 
-        for producer, items in items_by_producer.items():
-            order = Order.objects.create(
-                consumer=request.user,
-                producer=producer,
-                address=address,
-                notes=notes,
-                status='pending_payment',
-            )
-            total = 0
-            for item in items:
-                price = item.product.current_price()
-                OrderItem.objects.create(order=order, product=item.product,
-                                         quantity=item.quantity, price=price)
-                total += price * item.quantity
-            order.total = total
-            order.save()
-            order_ids.append(order.pk)
 
-        # Stripe Checkout
-        try:
-            stripe.api_key = settings.STRIPE_SECRET_KEY
-            if not settings.STRIPE_SECRET_KEY.startswith('sk_'):
-                raise ValueError('Stripe não configurado')
+@login_required
+@require_POST
+def create_payment_intent(request):
+    """Cria os pedidos pendentes e um PaymentIntent do Stripe.
+    Devolve o client_secret para o Payment Element confirmar na própria página."""
+    cart, _ = Cart.objects.get_or_create(user=request.user)
+    if not cart.items.exists():
+        return JsonResponse({'error': 'Seu carrinho está vazio.'}, status=400)
+    if not _stripe_enabled():
+        return JsonResponse({'error': 'Pagamento online indisponível no momento.'}, status=503)
 
-            line_items = []
-            for item in cart.items.select_related('product').all():
-                line_items.append({
-                    'price_data': {
-                        'currency': 'brl',
-                        'product_data': {
-                            'name': item.product.name,
-                            **(({'images': [request.build_absolute_uri(item.product.photo.url)]}
-                                if item.product.photo else {})),
-                        },
-                        'unit_amount': int(item.product.current_price() * 100),
-                    },
-                    'quantity': item.quantity,
-                })
+    try:
+        data = json.loads(request.body or '{}')
+    except ValueError:
+        data = {}
+    address = data.get('address', '')
+    notes = data.get('notes', '')
 
-            order_ids_str = ','.join(str(i) for i in order_ids)
-            session = stripe.checkout.Session.create(
-                payment_method_types=['card'],
-                line_items=line_items,
-                mode='payment',
-                customer_email=request.user.email or None,
-                success_url=(
-                    request.build_absolute_uri('/pagamento/sucesso/')
-                    + '?session_id={CHECKOUT_SESSION_ID}'
-                ),
-                cancel_url=(
-                    request.build_absolute_uri('/pagamento/falhou/')
-                    + f'?order_ids={order_ids_str}'
-                ),
-                metadata={'order_ids': order_ids_str},
-            )
+    stock_errors = _validate_cart_stock(cart)
+    if stock_errors:
+        return JsonResponse({'error': 'Estoque insuficiente: ' + '; '.join(stock_errors)}, status=409)
 
-            Order.objects.filter(pk__in=order_ids).update(mp_preference_id=session.id)
-            cart.items.all().delete()
-            return redirect(session.url)
+    # Remove tentativas anteriores não pagas deste usuário para não acumular pedidos órfãos
+    Order.objects.filter(
+        consumer=request.user, status='pending_payment', payment_status='pending'
+    ).delete()
 
-        except Exception as e:
-            if not settings.STRIPE_SECRET_KEY.startswith('sk_'):
-                # Modo simulado — Stripe não configurado
-                cart.items.all().delete()
-                orders = Order.objects.filter(pk__in=order_ids)
-                orders.update(status='received', payment_status='approved')
-                for order in orders:
-                    decrement_stock_for_order(order)
-                    notify_producer_new_order(order)
-                    notify_consumer_payment_confirmed(order)
-                messages.warning(request, '⚠️ Pagamento simulado — configure as chaves do Stripe no .env.')
-                return redirect('orders')
-            messages.error(request, f'Erro ao conectar com Stripe: {str(e)}')
-            Order.objects.filter(pk__in=order_ids).delete()
-            return redirect('cart')
+    order_ids, total = _create_pending_orders(request.user, cart, address, notes)
+    order_ids_str = ','.join(str(i) for i in order_ids)
 
-    return render(request, 'cart/checkout.html', {'cart': cart})
+    stripe.api_key = settings.STRIPE_SECRET_KEY
+    try:
+        intent = stripe.PaymentIntent.create(
+            amount=int(total * 100),
+            currency='brl',
+            payment_method_types=['card'],
+            metadata={'order_ids': order_ids_str},
+            receipt_email=request.user.email or None,
+        )
+    except Exception as e:
+        Order.objects.filter(pk__in=order_ids).delete()
+        return JsonResponse({'error': f'Erro ao iniciar pagamento: {e}'}, status=502)
+
+    Order.objects.filter(pk__in=order_ids).update(mp_preference_id=intent.id)
+    return JsonResponse({'clientSecret': intent.client_secret, 'order_ids': order_ids_str})
+
+
+def _approve_and_notify(order_ids, payment_id, user=None):
+    """Aprova os pedidos pendentes e dispara estoque/notificações uma única vez."""
+    qs = Order.objects.filter(pk__in=order_ids, payment_status='pending')
+    if user is not None:
+        qs = qs.filter(consumer=user)
+    updated = qs.update(payment_id=payment_id, payment_status='approved', status='received')
+    if updated:
+        for order in Order.objects.filter(pk__in=order_ids):
+            try:
+                decrement_stock_for_order(order)
+                notify_producer_new_order(order)
+                notify_consumer_payment_confirmed(order)
+            except Exception:
+                pass
+    return updated
 
 
 @login_required
 def payment_success(request):
+    # Retorno do Payment Element embutido (fluxo novo, sem tela do Stripe)
+    pi_id = request.GET.get('payment_intent', '')
+    if pi_id:
+        order_ids = []
+        status = 'succeeded'
+        try:
+            stripe.api_key = settings.STRIPE_SECRET_KEY
+            intent = stripe.PaymentIntent.retrieve(pi_id)
+            order_ids = [int(i) for i in intent.metadata.get('order_ids', '').split(',') if i.strip().isdigit()]
+            status = intent.status
+        except Exception:
+            order_ids = list(Order.objects.filter(
+                mp_preference_id=pi_id, consumer=request.user).values_list('pk', flat=True))
+
+        if order_ids and status == 'succeeded':
+            if _approve_and_notify(order_ids, pi_id, user=request.user):
+                cart = Cart.objects.filter(user=request.user).first()
+                if cart:
+                    cart.items.all().delete()
+                messages.success(request, '🎉 Pagamento aprovado! Seu pedido foi confirmado.')
+            orders = Order.objects.filter(pk__in=order_ids, consumer=request.user)
+            return render(request, 'payments/success.html', {'orders': orders, 'payment_id': pi_id})
+
+        # Pagamento ainda processando (ex.: autenticação assíncrona)
+        orders = Order.objects.filter(pk__in=order_ids, consumer=request.user)
+        return render(request, 'payments/pending.html', {'orders': orders})
+
+    # Fluxo legado por sessão hospedada do Stripe (compatibilidade)
     session_id = request.GET.get('session_id', '')
     orders = Order.objects.none()
 
@@ -470,24 +533,21 @@ def payment_webhook(request):
     except (ValueError, stripe.error.SignatureVerificationError):
         return HttpResponse(status=400)
 
-    if event['type'] == 'checkout.session.completed':
-        session = event['data']['object']
-        if session.get('payment_status') == 'paid':
-            order_ids_str = session.get('metadata', {}).get('order_ids', '')
-            order_ids = [int(i) for i in order_ids_str.split(',') if i.strip().isdigit()]
-            if order_ids:
-                updated_count = Order.objects.filter(
-                    pk__in=order_ids, payment_status='pending'
-                ).update(
-                    payment_id=session['id'],
-                    payment_status='approved',
-                    status='received',
-                )
-                if updated_count > 0:
-                    for order in Order.objects.filter(pk__in=order_ids):
-                        decrement_stock_for_order(order)
-                        notify_producer_new_order(order)
-                        notify_consumer_payment_confirmed(order)
+    event_type = event['type']
+    obj = event['data']['object']
+    order_ids = [int(i) for i in obj.get('metadata', {}).get('order_ids', '').split(',') if i.strip().isdigit()]
+
+    if order_ids:
+        # Fluxo novo: Payment Element confirma um PaymentIntent
+        if event_type == 'payment_intent.succeeded':
+            _approve_and_notify(order_ids, obj['id'])
+        elif event_type == 'payment_intent.payment_failed':
+            Order.objects.filter(
+                pk__in=order_ids, payment_status='pending'
+            ).update(payment_status='rejected', status='cancelled')
+        # Fluxo legado: sessão hospedada do Stripe
+        elif event_type == 'checkout.session.completed' and obj.get('payment_status') == 'paid':
+            _approve_and_notify(order_ids, obj['id'])
 
     return HttpResponse(status=200)
 
